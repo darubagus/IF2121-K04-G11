@@ -20,7 +20,7 @@ Anggota Kelompok :
 /* Menyatakan stauts keberlangsungan game, */
 /* gameOn(1) : permainan berjalan, player masih hidup */
 /* gameOn(0) : permainan berakhir, player terbunuh */
-:- gameOn(1).
+gameOn(1).
 
 /* Deklarasi Fakta */
 /* CHARACTER PEMAIN */
