@@ -16,11 +16,11 @@ Anggota Kelompok :
 /* Dynamic predicate */
 :- dynamic(char/3, attack/2, defense/2, max_HP/1, health/2,
    weapon/1, armor/1, acc/1, inventory/1, money/1,
-   player_pos/2, enemy_pos/3, quest/4, kill_count/3, killBoss/1).
+   player_pos/2, enemy_pos/3, quest/5, kill_count/4, kill_Boss_Status/1).
 /* char(Jobs,Level,Exp), attack(Att,BonusAtt), defense(Def,BonusDef), max_HP(Darah_Maksimal),  
  * health(Darah,BonusDarah), weapon(Senjata), armor(Armor), acc(Aksesoris),
- * inventory(List), player_pos(X,Y), enemy_pos(X,Y,Lv), quest(quest_lv,kill_slime,kill_goblin,kill_wolf),
- * kill_count(slime,goblin,wolf), killBoss(status) */
+ * inventory(List), player_pos(X,Y), enemy_pos(X,Y,Lv), quest(quest_lv,kill_slime,kill_goblin,kill_wolf,kill_sauron),
+ * kill_count(slime,goblin,wolf), kill_Boss_Status(status) */
 /*
 char(Jobs,Level,Exp),
 New_Level is Level + 1,
@@ -39,7 +39,7 @@ asserta(inventory(Y)).
 /* gameOn(1) : permainan berjalan, player masih hidup */
 /* gameOn(0) : permainan berakhir, player terbunuh, atau permainan belum dimulai */
 gameOn(0).
-killBoss(0).
+kill_Boss_Status(0).
 
 /* ENEMY */
 /* enemy_common(lv,kind,attack,defense,health)*/
@@ -511,47 +511,63 @@ random_enemy :-
     
 
 /* BAGIAN QUEST */
-quest_tier(1,2,1,0).
-quest_tier(2,1,2,0).
-quest_tier(3,0,2,1).
-/* quest_tier(Lv_Quest,Kill_Slime,Kill_Goblin,Kill_Wolf) */
+quest_tier(1, 2, 1, 0, 0).
+quest_tier(2, 1, 2, 0, 0).
+quest_tier(3, 0, 2, 1, 0).
+quest_tier(4, 0, 0, 0, 1).
+
+/* quest_tier(Lv_Quest,Kill_Slime,Kill_Goblin,Kill_Wolf,Kill_Sauron) */
 
 /* Simpan tempat pengambilan quest */
 quest_pos(3,1).
 
 /* Pertama kali kita datang ke quest (Q), kita diberikan quest tier 1 */
 quest_init :-
-    quest_tier(1, Quest_Kill_Slime, Quest_Kill_Goblin, Quest_Kill_Wolf),
+    quest_tier(1, Quest_Kill_Slime, Quest_Kill_Goblin, Quest_Kill_Wolf, Quest_Kill_Sauron),
     
-    retract(quest(_,_,_)),
-    asserta(quest(Quest_Kill_Slime, Quest_Kill_Goblin, Quest_Kill_Wolf)),
+    retract(quest(_, _, _, _)),
+    asserta(quest(Quest_Kill_Slime, Quest_Kill_Goblin, Quest_Kill_Wolf, Quest_Kill_Sauron)),
     
-    retract(kill_count(_,_,_)),
-    asserta(kill_count(0, 0, 0)).
+    retract(kill_count(_, _, _, _)),
+    asserta(kill_count(0, 0, 0, 0)).
 
 quest_check :-
-    quest(CurrentQuest, Current_Quest_Kill_Slime, Current_Quest_Kill_Goblin, Current_Quest_Kill_Wolf),
+    quest(Current_Quest_Level, Current_Quest_Kill_Slime, Current_Quest_Kill_Goblin, Current_Quest_Kill_Wolf, Current_Quest_Kill_Sauron),
     
-    CurrentQuest <= 3,
+    Current_Quest_Level < 4,
     
-    kill_count(Current_Kill_Slime, Current_Kill_Goblin, Current_Kill_Wolf),
+    kill_count(Current_Kill_Slime, Current_Kill_Goblin, Current_Kill_Wolf, Current_Kill_Sauron),
     
     Current_Quest_Kill_Slime <= Current_Kill_Slime,
     Current_Quest_Kill_Goblin <= Current_Kill_Goblin,
     Current_Quest_Kill_Wolf <= Current_Kill_Wolf,
+    Current_Quest_Kill_Sauron <= Current_Kill_Sauron,
 
     /* Reset Kill Count */
     Current_Kill_Slime_New is Current_Kill_Slime - Current_Quest_Kill_Slime,
     Current_Kill_Goblin_New is Current_Kill_Goblin - Current_Quest_Kill_Goblin,
     Current_Kill_Wolf_New is Current_Kill_Wolf - Current_Quest_Kill_Wolf,
+    Current_Kill_Sauron_New is Current_Kill_Sauron - Current_Quest_Kill_Sauron,
 
-    retract(kill_count(_, _, _)),
-    asserta(kill_count(Current_Kill_Slime_New, Current_Kill_Goblin_New, Current_Kill_Wolf_New)),
+    retract(kill_count(_, _, _, _)),
+    asserta(kill_count(Current_Kill_Slime_New, Current_Kill_Goblin_New, Current_Kill_Wolf_New, Current_Kill_Sauron_New)),
     
-    /* Update Level, Exp*/
-    char(Current_Job, ),
+    char(Current_Job, Current_Level, Current_Exp),
+    New_Exp is Current_Exp + (Current_Quest_Level * 100),
+    retract(char(_, _, _)),
+    asserta(char(Current_Job, Current_Level, New_Exp)).
+
+quest_check :-
+    quest(Current_Quest_Level, Current_Quest_Kill_Slime, Current_Quest_Kill_Goblin, Current_Quest_Kill_Wolf, Current_Quest_Kill_Sauron),
     
+    Current_Quest_Level == 4,
     
+    kill_count(Current_Kill_Slime, Current_Kill_Goblin, Current_Kill_Wolf, Current_Kill_Sauron),
+
+    Current_Kill_Sauron == Current_Quest_Kill_Sauron,
+
+    retract(kill_Boss_Status(_)),
+    asserta(kill_Boss_Status(1)).
     
 /* Gunakan dynamic predicate quest dan kill_count */
 
@@ -560,8 +576,6 @@ quest_check :-
 /* Cek apakah misi berhasil (quest==killcount)*/
     /* Kalau berhasil, kasih gold+exp */
     
-
-
 /* BAGIAN EXPLORATION MECHANISM */
 
 /* Player Movement */
@@ -637,7 +651,30 @@ is_quest_near :-
     X_Player == X_Quest,
     Y_Player == Y_Quest - 1.
 
-/* 
+/* shop */
+is_shop_near :-
+    player_pos(X_Player, Y_Player),
+    shop_pos(X_Shop, Y_Shop),
+    X_Player == X_Shop + 1,
+    Y_Player == Y_Shop.
+
+is_shop_near :-
+    player_pos(X_Player, Y_Player),
+    shop_pos(X_Shop, Y_Shop),
+    X_Player == X_Shop - 1,
+    Y_Player == Y_Shop.
+
+is_shop_near :-
+    player_pos(X_Player, Y_Player),
+    shop_pos(X_Shop, Y_Shop),
+    X_Player == X_Shop,
+    Y_Player == Y_Shop + 1.
+
+is_shop_near :-
+    player_pos(X_Player, Y_Player),
+    shop_pos(X_Shop, Y_Shop),
+    X_Player == X_Shop,
+    Y_Player == Y_Shop - 1.
 
 /* Buka quest */
 
@@ -685,33 +722,34 @@ store_item_handling(X) :-
     writeln('You choose Archer Weapon'),
     /* Randomize dan masukan ke Inventory */
     random_item_archer.
-    
-store_item_handling(X) :- 
+
+store_item_handling(X) :-
     X == 3,
     writeln('You choose Sorcerer Weapon'),
     /* Randomize dan masukan ke Inventory */
     random_item_sorcerer.
-    
 store_item_handling(X) :-
     X == 4,
     writeln('You choose Armor'),
     /* Randomize dan masukan ke Inventory */
-    random_item_armor.
-    
+    random_item_armor
 store_item_handling(X) :-
     X == 5,
-    writeln('You choose Accesories'),
+    writeln('You choose Accessories'),
     /* Randomize dan masukan ke Inventory */
-    random_item_accesorries.
-    
+    random_item_accessories.
 store_item_handling(X) :-
     X == 6,
     writeln('Choose your Potion'),
-    writeln("1. Freshcare (health)"),
+    writeln('1. Freshcare (health)'),
+    writeln('2. Bodrex (attack)'),
+    writeln('3. Antangin (defense)'),
     /* Potion tidak randomize langsung beli aja mang */
     read(Y),
     add_item_potion(Y).
 
+
+    
 random_item_swordsman :-
     random(1, 3, Swordsman_Weapon),
     Swordsman_Weapon == 1,
@@ -823,7 +861,7 @@ random_item_accessories :-
 add_item_potion(Y) :-
     Y == 1,
     writeln('You get 5 freshcare potion'),
-    inventory_add_N(freshcare).
+    inventory_add_N(freshcare,5).
 
 add_item_potion(Y) :-
     Y == 2,
@@ -836,9 +874,6 @@ add_item_potion(Y) :-
     inventory_add_N(antangin,5).
     
     
-
-
-
 /* Display New Game*/
 start :-
     /*Insialisasi program*/
