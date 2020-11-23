@@ -16,11 +16,12 @@ Anggota Kelompok :
 /* Dynamic predicate */
 :- dynamic(char/3, attack/2, defense/2, max_HP/1, health/2,
    weapon/1, armor/1, acc/1, inventory/1, money/1,
-   player_pos/2, enemy_pos/3, quest/5, kill_count/4, kill_Boss_Status/1).
+   player_pos/2, enemy_pos/3, quest/5, kill_count/4, kill_Boss_Status/1, 
+   turn/1, current_enemy/4).
 /* char(Jobs,Level,Exp), attack(Att,BonusAtt), defense(Def,BonusDef), max_HP(Darah_Maksimal),  
  * health(Darah,BonusDarah), weapon(Senjata), armor(Armor), acc(Aksesoris),
  * inventory(List), player_pos(X,Y), enemy_pos(X,Y,Lv), quest(quest_lv,kill_slime,kill_goblin,kill_wolf,kill_sauron),
- * kill_count(slime,goblin,wolf), kill_Boss_Status(status) */
+ * kill_count(slime,goblin,wolf), kill_Boss_Status(status), turn(jumlah_turn), current_enemy(current_HP,Lv,X_Pos,Y_Pos)  */
 /*
 char(Jobs,Level,Exp),
 New_Level is Level + 1,
@@ -42,7 +43,7 @@ gameOn(0).
 kill_Boss_Status(0).
 
 /* ENEMY */
-/* enemy_common(lv,kind,attack,defense,health)*/
+/* enemy_type(lv,kind,attack,defense,health)*/
 enemy_type(1,slime,2,5,20).
 enemy_type(2,goblin,4,10,40).
 enemy_type(3,wolf,8,20,80).
@@ -92,6 +93,17 @@ item_potion(bodrex,attack).
 item_potion(antangin,defense).
 
 /*Run command*/
+run(map):- map_show.
+run(status):- status.
+run(w):- gerak(_,_,w,Xf,Yf), nl,!.
+run(a):- gerak(_,_,a,Xf,Yf), nl,!.
+run(s):- gerak(_,_,s,Xf,Yf), nl,!.
+run(d):- gerak(_,_,d,Xf,Yf), nl,!.
+run(help):- help,nl,!.
+run(attack):- info_enemy,nl,!.
+run(store):- shop,nl,!.
+run(quest):- quest,nl,!.
+
 
 /* Game Looping */
 game_cond :-
@@ -105,7 +117,7 @@ game_cond :-
 
 /* Basic rules */
 /* Fungsi-Fungsi Dasar */
-isAccessible(X,Y) :- X>=1, X<=20, Y>=1, Y<=10.
+
 
 writeList([]):- nl.
 writeln([H|T]):-
@@ -222,7 +234,7 @@ character_level_up :-
     /* PANGGIL VARIABEL CHARACTER */
     char(X,Y,Z),
     /* PERHITUNGAN LEVEL UP, EXP >= LEVEL*10 */
-    Z >= Y*10,
+    Z >= Y*10, !,
     Yf is Y+1,
     Zf is Z-Y*10,
     /* UPDATE CHAR */
@@ -246,6 +258,12 @@ character_level_up :-
     asserta(armor(UP_Dff,BonusDef)),
     asserta(max_HP(UP_MaxHP)),
     asserta(health(UP_Darah,BonusDarah)).
+
+character_level_up :-
+    /* PANGGIL VARIABEL CHARACTER */
+    char(X,Y,Z),
+    /* PERHITUNGAN LEVEL UP, EXP >= LEVEL*10 */
+    Z < Y*10, !.
 
 /* BONUS STATUS */
 character_bonus_stat_update :-
@@ -326,16 +344,16 @@ character_bonus_stat_acc(Acc_Name) :-
 
 /* Menampilkan Peta */
 map_show :-
-    Y is 0,
+    Y is 11,
     map_iterate_baris(Y). 
 
 /* Iterasi Baris */
-map_iterate_baris(12) :-    /* Basis */
+map_iterate_baris(-1) :-    /* Basis */
     !.
 map_iterate_baris(Y) :-     /* Rekurens */
     X is 0,
     map_write_baris(X,Y),
-    Next_Y is Y + 1,
+    Next_Y is Y - 1,
     map_iterate_baris(Next_Y).
 
 /* Menulis Baris */
@@ -436,7 +454,7 @@ using_potion(X) :-
     CurrentBonusHpTemp is CurrentBonusHp + 1,
     Temporary is CurrentHp,
     retract(health(_, _)),
-    asserta(health(Temporary, CurrentBonusHpTemp)),
+    asserta(health(MaxHP(100)), CurrentBonusHpTemp)),
     inventory_del(X).
 
 using_potion(X) :-
@@ -465,11 +483,6 @@ using_potion(X) :-
 
 /* BAGIAN ENEMY */
 
-calcDamage([],0).
-calcDamage([H|Tail],X):-
-    enemy_type(_,H,Att,_,_),
-    calcDamageCommon(T,Xn),
-    X is Xn+Att.
 
 random_enemy :-
     random(1, 10, Enemy_1_X),
@@ -576,50 +589,77 @@ quest_check :-
 /* BAGIAN EXPLORATION MECHANISM */
 
 /* Player Movement */
+
+/* Is Accessible */
+isAccessible(X,Y) :- 
+    X>=1, X<=20, Y>=1, Y<=10,
+    \+enemy_pos(X,Y,_),
+    \+shop_pos(X,Y),
+    \+quest_pos(X,Y).
+
 gerak(Xi,Yi,w,Xf,Yf) :-
     gameOn(1),
     Yi < 10,
     Yf is Yi + 1,
-    Xf is Xi, !.
+    Xf is Xi, !,
+    isAccessible(Xf,Yf),
+    retract(player_pos(_,_)),
+    asserta(player_pos(Xf,Yf)).
+
 gerak(Xi,Yi,a,Xf,Yf) :-
     gameOn(1),
     Xi > 1,
     Xf is Xi - 1,
-    Yf is Yi, !.
+    Yf is Yi, !,
+    isAccessible(Xf,Yf),
+    retract(player_pos(_,_)),
+    asserta(player_pos(Xf,Yf)).
+
 gerak(Xi,Yi,s,Xf,Yf) :-
     gameOn(1),
     Yi > 1,
     Yf is Yi + 1,
-    Xf is Xi, !.
+    Xf is Xi, !,
+    isAccessible(Xf,Yf),
+    retract(player_pos(_,_)),
+    asserta(player_pos(Xf,Yf)).
+
 gerak(Xi,Yi,d,Xf,Yf) :-
     gameOn(1),
     Xi < 20,
     Xf is Xi + 1,
-    Yf is Yi, !. 
+    Yf is Yi, !,
+    isAccessible(Xf,Yf),
+    retract(player_pos(_,_)),
+    asserta(player_pos(Xf,Yf)).
 
 /* Mengecek apakah ada sesuatu yang dekat dengan kita */
 /* enemy */
-is_enemy_near :-
+is_enemy_near(Lv_Enemy,X_Enemy,Y_Enemy) :-  
+/* kalo enemy ada di kiri player*/
     player_pos(X_Player, Y_Player),
-    enemy_pos(X_Enemy, Y_Enemy,_),
+    enemy_pos(X_Enemy, Y_Enemy,Lv_Enemy),
     X_Player == X_Enemy + 1,
     Y_Player == Y_Enemy.
 
-is_enemy_near :-
+is_enemy_near(Lv_Enemy,X_Enemy,Y_Enemy) :-
+/* kalo enemy ada di kanan player*/
     player_pos(X_Player, Y_Player),
-    enemy_pos(X_Enemy, Y_Enemy,_),
+    enemy_pos(X_Enemy, Y_Enemy,Lv_Enemy),
     X_Player == X_Enemy - 1,
     Y_Player == Y_Enemy.
 
-is_enemy_near :-
+is_enemy_near(Lv_Enemy,X_Enemy,Y_Enemy) :-
+/* kalo enemy ada di bawah player*/
     player_pos(X_Player, Y_Player),
-    enemy_pos(X_Enemy, Y_Enemy,_),
+    enemy_pos(X_Enemy, Y_Enemy,Lv_Enemy),
     X_Player == X_Enemy,
     Y_Player == Y_Enemy + 1.
 
-is_enemy_near :-
+is_enemy_near(Lv_Enemy,X_Enemy,Y_Enemy) :-
+/* kalo enemy ada di atas player*/
     player_pos(X_Player, Y_Player),
-    enemy_pos(X_Enemy, Y_Enemy,_),
+    enemy_pos(X_Enemy, Y_Enemy,Lv_Enemy),
     X_Player == X_Enemy,
     Y_Player == Y_Enemy - 1.
 
@@ -648,7 +688,6 @@ is_quest_near :-
     X_Player == X_Quest,
     Y_Player == Y_Quest - 1.
 
-<<<<<<< Updated upstream
 /* shop */
 is_shop_near :-
     player_pos(X_Player, Y_Player),
@@ -673,27 +712,197 @@ is_shop_near :-
     shop_pos(X_Shop, Y_Shop),
     X_Player == X_Shop,
     Y_Player == Y_Shop - 1.
-=======
-/* Shop */
->>>>>>> Stashed changes
+
+quest_open :-
+    quest(Current_Quest_Level, Current_Kill_Slime, Current_Kill_Goblin, Current_Kill_Wolf, Current_Kill_Sauron),
+    write('Your current quest level : '), writeln(Current_Quest_Level),
+    Current_Quest_Level < 4,
+    write('Task'),
+    write('1. Kill Slime   :'), writeln(Current_Kill_Slime),
+    write('2. Kill Goblin  :'), writeln(Current_Kill_Goblin),
+    write('3. Kill Wolf    :'), writeln(Current_Kill_Wolf),
+    
+quest_open :-
+    quest(Current_Quest_Level, Current_Kill_Slime, Current_Kill_Goblin, Current_Kill_Wolf, Current_Kill_Sauron),
+    write('Your current quest level : '), writeln(Current_Quest_Level),
+    Current_Quest_Level == 4,
+    write('Task'),
+    write('1. Kill Boss (Sauron)   :'), writeln(Current_Kill_Sauron),
 
 /* Buka quest */
 quest :-
     is_quest_near,
-    open_quest.
+    quest_open.
 
 /* Buka shop */
 shop :-
     is_shop_near,
     store.
 
+/* Enemy info */
+enemy_info(Level) :-
+    enemy_type(Level,Nama,Att,Def,Health),
+    write('Kind     = '), writeln(Nama),
+    write('Attack   = '), writeln(Att),
+    write('Defense  = '), writeln(Def),
+    write('Health   = '), writeln(Health).
+
 /* Ajak berantem musuh */
 info_enemy :-
-    enemy_info,
-    writeln('What will you do? (attack/run)')
+    is_enemy_near(Lv_Enemy,_,_),
+    writeln('Ohh no, musuh menghampirimu!'),!,
+    enemy_info(Lv_Enemy), 
+    serang.
+
+info_enemy :-
+    \+is_enemy_near(Lv_Enemy,_,_),
+    writeln('Tidak ada musuh disekitarmu!'),!.
 
 
 /* BAGIAN BATTLE MECHANISM */
+/* gunakan dynamic predicate turn/1 dan current_enemy/4 */
+/* enemy_type(lv,kind,attack,defense,health)*/
+
+serang :-
+    gameOn(1),
+    is_enemy_near(Lv_Enemy,X_Enemy,Y_Enemy),
+    enemy_type(Lv_Enemy,Kind_Enemy,Att_Enemy,Def_Enemy,HP_Enemy),
+    update_darah_musuh(Hp_Enemy),
+    retract(turn(_)),
+    asserta(turn(0)),
+    serang_musuh.
+    
+update_darah_musuh(HP_Enemy) :-
+    retract(current_enemy(_,Lv,X,Y)),
+    asserta(current_enemy(HP_Enemy,Lv,X,Y)).
+
+serang_musuh :-
+    writeln('Do something! (serang/serangan_maut/buka_inventory/lari)'),
+    read(X),
+    serang_action(X),
+    turn(N),
+    N1 is N + 1,
+    retract(turn(_)),
+    asserta(turn(N1)),
+    serang_player.
+    
+/* enemy_type(lv,kind,attack,defense,health)*/
+
+/* Action yang bisa dilakukan ketika ketemu musuh */
+serang_action(X):-
+    X == serang, !,
+    /* Kasih tulisan berapa damage yang dikasih ke enemy, tampilkan lagi enemy_info */
+    attack(Att_Player,Bonus_Att_Player),
+    current_enemy(_,Lv,_,_),
+    enemy_type(Lv,Kind,_,Enemy_Def,_),
+    /* Deal Damage */
+    damage_calculator(Att_Player,Bonus_Att_Player,Enemy_Def,0, Damage),
+    write('You deal '),write(Damage),writeln(' damage'),
+    New_Hp_Enemy is Hp_Enemy - Damage,
+    enemy_status(New_Hp_Enemy).
+
+serang_action(X) :-
+    X == serangan_maut,
+    turn(N),
+    N >= 3, !,
+    /* sama kayak X == serang, cuma beda damage doang, setelah 3 kali serangan normal */
+    retract(turn(_)),
+    asserta(turn(0)),
+    attack(Att_Player,Bonus_Att_Player),
+    current_enemy(_,Lv,_,_),
+    enemy_type(Lv,Kind,_,Enemy_Def,_),
+    New_Att_Player is 2*Att_Player,
+    /* Deal Damage */
+    damage_calculator(New_Att_Player,Bonus_Att_Player,Enemy_Def,0, Damage),
+    /* Kasih tulisan berapa damage yang dikasih ke enemy, tampilkan lagi enemy_info */
+    Damage is Attack_Player*2 - Def_Enemy,
+    write('You deal '),write(Damage),writeln(' damage'),
+    New_Hp_Enemy is Hp_Enemy - Damage,
+    enemy_status(New_Hp_Enemy).
+
+serang_action(X) :-
+    X == serangan_maut,
+    turn(N),
+    N < 3, !,
+    writeln('Serangan maut gagal!').
+
+enemy_status(HP) :-
+    HP > 0,
+    update_darah_musuh(New_Hp_Enemy),
+    serang_player.
+    
+enemy_status(HP) :-
+    HP <= 0,
+    /* Nambah EXP dan uang */
+    char(Jobs,Lv,Xp),
+    current_enemy(_,Lv_Enemy,X,Y),
+    NXp is Xp+Lv_Enemy*5,
+    retract(char(_,_,_)),
+    asserta(char(Jobs,Lv,NXp)),
+    character_level_up.
+
+    Nuang is Uang+Lv_Enemy*100,
+    retract(money(_)),
+    asserta(money(Nuang)),
+    
+    /* Hapus enemy di posisi itu, retract enemy_pos, dan retract turn */
+    retract(current_enemy(_,_,_,_)),
+    retract(enemy_pos(X,Y,Lv_Enemy)),
+    retract(turn(_)).
+    
+    
+serang_action(X):-
+    X == lari, !.
+    lariyee.
+
+serang_action(X):-
+    X == buka_inventory,
+    inventory(Inven),
+    write('Inventory  = '), writeList(Inven),
+    /* [fresh_care, bla, bla, bla]  */
+    read(X),
+    serang_action_inventory(X).
+
+serang_action_inventory(X):-
+    using_potion(X),
+    writeln('Potion berhasil digunakan.').
+
+lariyee :-
+    random(1,4,Probability),
+    Probability /= 4,
+    retract(turn(_)),
+    retract(current_enemy(_,_,_,_)),!,fail. /*cut_fail*/
+    
+lariyee :-
+    random(1,4,Probability),
+    Probability == 4,
+    writeln('Tidak! Kamu gagal kabur!!!'),!. 
+
+serang_player:-
+    gameOn(1),
+    health(Darah,BonusDarah),
+    defense(Def,BonusDef),
+    enemy_type(Lv_Enemy,Kind_Enemy,Att_Enemy,Def_Enemy,Hp_Enemy),
+    /* ini bug character jadi immortal */
+    damage_calculator(Att_Enemy,0,Def,BonusDef, Damage),
+    Result is Darah + BonusDarah - Damage, 
+    retract(health(_,_)),
+    asserta(health(Result,BonusDarah)),
+    serang_musuh.
+
+damage_calculator(Att,BonusAtt,Def,BonusDef,Damage) :-
+    Total is Att+BonusAtt-Def-BonusDef,
+    Total >= 0,
+    Damage is Total,!.
+
+damage_calculator(Att,BonusAtt,Def,BonusDef,Damage) :-
+    Total is Att+BonusAtt-Def-BonusDef,
+    Total < 0,
+    Damage is 0,!. 
+
+
+
+
 
 
 /* BAGIAN STORE */
@@ -915,6 +1124,8 @@ start :-
     asserta(player_pos(1,1)),
     welcome_character_creation,
     random_enemy,
+    retract(killBoss(_)),
+    asserta(killBoss(0)),
     retract(gameOn(_)),
     asserta(gameOn(1)),
     game_cond.
@@ -952,7 +1163,19 @@ help :- writeln('_______________________________________________________________
         writeln("| |__| |  __/ | | \__ \ | | | | | | |  ____) |  __/   < (_| | |"),
         writeln("\______|\___|_| |_|___/_| |_|_|_| |_| |_____/ \___|_|\_\__,_|_|"),
         writeln("_______________________________________________________________"),
-        writeln('Available commands:'),
+        writeln('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),
+        writeln('%                        ~Genshin Sekai~                         %'),
+        writeln('%                                                                %'),
+        writeln('%  1. start  : untuk memulai petualanganmu                       %'),
+        writeln('%  2. map    : menampilkan peta                                  %'),
+        writeln('%  3. status : menampilkan kondisimu terkini                     %'),
+        writeln('%  4. w      : gerak ke utara 1 langkah                          %'),
+        writeln('%  5. s      : gerak ke selatan 1 langkah                        %'),
+        writeln('%  6. d      : gerak ke ke timur 1 langkah                       %'),
+        writeln('%  7. a      : gerak ke barat 1 langkah                          %'),
+        writeln('%  9. Status : menampilkan status pemain                         %'),
+        writeln('%  8. help   : menampilkan segala bantuan                        %'),
+        writeln('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%').
         writeln(''),
         writeln('Legends:'),
         writeln('P = Player'),
