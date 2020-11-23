@@ -15,10 +15,11 @@ Anggota Kelompok :
 
 /* Dynamic predicate */
 :- dynamic(char/3, attack/2, defense/2, max_HP/1, health/2,
-   weapon/1, armor/1, acc/1, inventory/1, playerPos/2, money/1, enemy_att/2).
+   weapon/1, armor/1, acc/1, inventory/1, money/1, enemy_att/2,
+   player_pos/2, enemy_pos/3).
 /* char(Jobs,Level,Exp), attack(Att,BonusAtt), defense(Def,BonusDef), max_HP(Darah_Maksimal),  
  * health(Darah,BonusDarah), weapon(Senjata), armor(Armor), acc(Aksesoris),
- * inventory(List), playerPos(X,Y), enemy_att(NamaMusuh,Attack) */
+ * inventory(List), enemy_att(NamaMusuh,Attack), player_pos(X,Y), enemy_pos(X,Y,kind) */
 /*
 char(Jobs,Level,Exp),
 New_Level is Level + 1,
@@ -192,9 +193,7 @@ welcome_character_creation :-
     asserta(armor(Armor_Name)),
     asserta(acc(Acc_Name))
     /* STATUS TAMBAHAN */
-    character_bonus_stat_weapon(Weapon_Name),
-    character_bonus_stat_armor(Armor_Name),
-    character_bonus_stat_acc(Acc_Name),
+    character_bonus_stat_update,
     /* TAMBAH KE INVENTORY */
     inventory_add(Weapon_Name),
     inventory_add(Armor_Name),
@@ -264,16 +263,26 @@ character_level_up :-
     asserta(health(UP_Darah,BonusDarah)).
 
 /* BONUS STATUS */
-/* character_bonus_stat :-
-     /* PANGGIL ITEM YANG DIPAKAI, asumsi selalu ada item yang dipakai 
-     weapon(Weapon_Name),
-     armor(Armor_Name),
-     acc(Acc_Name),
-     Cek Efek Item
-     item_weapon(_,_,Weapon_Name,Weapon_Att),
-     item_armor(_,Armor_Name,Armor_Def),
-     item_acc(Lv,Acc_Name,Efek),
-*/
+character_bonus_stat_update :-
+    /* PANGGIL ITEM YANG DIPAKAI, asumsi selalu ada item yang dipakai */
+    weapon(Weapon_Name),
+    armor(Armor_Name),
+    acc(Acc_Name),
+    /* Reset dulu jadi 0 */
+    attack(Att,BonusAtt),
+    defense(Def,BonusDef),
+    health(HP,BonusHP),
+    retract(attack(_,_)),
+    retract(defense(_,_)),
+    retract(health(_,_)),
+    asserta(attack(Att,0)),
+    asserta(defense(Def,0)),
+    asserta(health(HP,0)),
+    /* Hitung lagi bonusnya */
+    character_bonus_stat_weapon(Weapon_Name),
+    character_bonus_stat_armor(Armor_Name),
+    character_bonus_stat_acc(Acc_Name),
+
 
 character_bonus_stat_weapon(Weapon_Name) :-
     /* Panggil Item */
@@ -325,6 +334,59 @@ character_bonus_stat_acc(Acc_Name) :-
 
 
 /* BAGIAN MAP */
+
+/* Ukuran peta : 12x22 */
+/* Peta terdefinisi dari 0..11 dan 0..21 */
+/* Hanya bisa diakses dari 1..10 dan 1..20 */
+
+/* Menampilkan Peta */
+map_show :-
+    Y is 0,
+    map_iterate_baris(Y). 
+
+/* Iterasi Baris */
+map_iterate_baris(12) :-    /* Basis */
+    !.
+map_iterate_baris(Y) :-     /* Rekurens */
+    map_write_baris(X,Y),
+    Next_Y is Y + 1,
+    map_iterate_baris(Y).
+
+/* Menulis Baris */
+map_write_baris(22,_) :-    /* Basis */
+    write('\n'),!.
+map_write_baris(X,Y) :-     /* Rekurens */
+    map_write_element(X,Y),
+    Next_X is X + 1,
+    map_write_baris(Next_X,Y).
+
+/* Menulis Setiap Elemen */
+/* Menulis batas map */
+map_write_element(_,0) :-   
+    write('#'),!.
+map_write_element(_,11) :-
+    write('#'),!.
+map_write_element(0,_) :-
+    write('#'),!.
+map_write_element(21,_) :-
+    write('#'),!.
+/* Menulis element pada map */
+/* Player */
+map_write_element(X,Y) :-
+    player_pos(X,Y),
+    write('P'),!.
+/* Enemy */
+map_write_element(X,Y) :-
+    enemy_pos(X,Y,_),
+    write('E'),!.
+/* Shop */
+map_write_element(X,Y) :-
+    shop_pos(X,Y),
+    write('S'),!.
+/* Quest */
+map_write_element(X,Y) :-
+    quest_pos(X,Y),
+    write('Q'),!.
 
 
 /* BAGIAN INVENTORY */
