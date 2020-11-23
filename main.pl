@@ -99,12 +99,9 @@ game_cond :-
     repeat,
         read(command),
         run(command),
-        (cekmenang)
+        (killBoss(0) ; X==quit), !, halt.
         /* perulangan game*/
 
-cekMenang :-
-    gameOn(1),
-    
 
 /* Basic rules */
 /* Fungsi-Fungsi Dasar */
@@ -651,6 +648,7 @@ is_quest_near :-
     X_Player == X_Quest,
     Y_Player == Y_Quest - 1.
 
+<<<<<<< Updated upstream
 /* shop */
 is_shop_near :-
     player_pos(X_Player, Y_Player),
@@ -675,13 +673,24 @@ is_shop_near :-
     shop_pos(X_Shop, Y_Shop),
     X_Player == X_Shop,
     Y_Player == Y_Shop - 1.
+=======
+/* Shop */
+>>>>>>> Stashed changes
 
 /* Buka quest */
-
+quest :-
+    is_quest_near,
+    open_quest.
 
 /* Buka shop */
+shop :-
+    is_shop_near,
+    store.
 
 /* Ajak berantem musuh */
+info_enemy :-
+    enemy_info,
+    writeln('What will you do? (attack/run)')
 
 
 /* BAGIAN BATTLE MECHANISM */
