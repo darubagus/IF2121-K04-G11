@@ -15,11 +15,12 @@ Anggota Kelompok :
 
 /* Dynamic predicate */
 :- dynamic(char/3, attack/2, defense/2, max_HP/1, health/2,
-   weapon/1, armor/1, acc/1, inventory/1, money/1, enemy_att/2,
-   player_pos/2, enemy_pos/3).
+   weapon/1, armor/1, acc/1, inventory/1, money/1,
+   player_pos/2, enemy_pos/3, quest/4, kill_count/3, killBoss/1).
 /* char(Jobs,Level,Exp), attack(Att,BonusAtt), defense(Def,BonusDef), max_HP(Darah_Maksimal),  
  * health(Darah,BonusDarah), weapon(Senjata), armor(Armor), acc(Aksesoris),
- * inventory(List), enemy_att(NamaMusuh,Attack), player_pos(X,Y), enemy_pos(X,Y,kind) */
+ * inventory(List), player_pos(X,Y), enemy_pos(X,Y,Lv), quest(quest_lv,kill_slime,kill_goblin,kill_wolf),
+ * kill_count(slime,goblin,wolf), killBoss(status) */
 /*
 char(Jobs,Level,Exp),
 New_Level is Level + 1,
@@ -38,13 +39,14 @@ asserta(inventory(Y)).
 /* gameOn(1) : permainan berjalan, player masih hidup */
 /* gameOn(0) : permainan berakhir, player terbunuh, atau permainan belum dimulai */
 gameOn(0).
-
+killBoss(0).
 
 /* ENEMY */
-enemy_common(slime).
-enemy_common(goblin).
-enemy_common(wolf).
-enemy_boss(sauron).
+/* enemy_common(lv,kind,attack,defense,health)*/
+enemy_type(1,slime,2,5,20).
+enemy_type(2,goblin,4,10,40).
+enemy_type(3,wolf,8,20,80).
+enemy_type(4,sauron,20,40,200).
 
 /* ITEM */
 /* item_weapon(tingkat senjata, char_jobs, char_weapon, kekuatan) */
@@ -89,6 +91,8 @@ item_potion(freshcare,health).
 item_potion(bodrex,attack).
 item_potion(antangin,defense).
 
+/*Run command*/
+
 /* Game Looping */
 game_cond :-
     gameOn(1),
@@ -97,6 +101,10 @@ game_cond :-
         run(command),
         (cekmenang)
         /* perulangan game*/
+
+cekMenang :-
+    gameOn(1),
+    
 
 /* Basic rules */
 /* Fungsi-Fungsi Dasar */
@@ -132,27 +140,7 @@ isMember(X, [Y|Xs]) :-
 /* Ukuran peta : 12x22 */
 /* Peta terdefinisi dari 0..11 dan 0..21 */
 /* Hanya bisa diakses dari 1..10 dan 1..20 */
-/* Player Movement */
-gerak(Xi,Yi,w,Xf,Yf) :-
-    gameOn(1),
-    Yi < 10,
-    Yf is Yi + 1,
-    Xf is Xi, !.
-gerak(Xi,Yi,a,Xf,Yf) :-
-    gameOn(1),
-    Xi > 1,
-    Xf is Xi - 1,
-    Yf is Yi, !.
-gerak(Xi,Yi,s,Xf,Yf) :-
-    gameOn(1),
-    Yi > 1,
-    Yf is Yi + 1,
-    Xf is Xi, !.
-gerak(Xi,Yi,d,Xf,Yf) :-
-    gameOn(1),
-    Xi < 20,
-    Xf is Xi + 1,
-    Yf is Yi, !.    
+   
 
 /* STATUS */
 status :- 
@@ -348,9 +336,10 @@ map_show :-
 map_iterate_baris(12) :-    /* Basis */
     !.
 map_iterate_baris(Y) :-     /* Rekurens */
+    X is 0,
     map_write_baris(X,Y),
     Next_Y is Y + 1,
-    map_iterate_baris(Y).
+    map_iterate_baris(Next_Y).
 
 /* Menulis Baris */
 map_write_baris(22,_) :-    /* Basis */
@@ -387,6 +376,11 @@ map_write_element(X,Y) :-
 map_write_element(X,Y) :-
     quest_pos(X,Y),
     write('Q'),!.
+/* Accessible Area */
+map_write_element(X,Y) :-
+    write('-'),!.
+
+
 
 
 /* BAGIAN INVENTORY */
@@ -410,53 +404,73 @@ inventory_del(Item) :-
     retract(inventory(_)),
     asserta(inventory(Zf)).
     
-
 isi_inventory :-
     writeln("Your inventory:"),
     
+    
 /* BAGIAN ITEM */
 /* MEKANISME MEMAKAI ITEM DARI INVENTORY (WEAPON,ARMOR,ACC) */
-using_weapon(X,Y) :-
+using_weapon(X) :-
+    /* X adalah nama weapon, JobsW adalah jenis jobs yang sesuai dengan weapon, Z adalah inventory */
     inventory(Z),
     isMember(X,Z),
-    item_weapon(_,Y,_,BonusATTACK),
-    attack(CurrAtt, BonusCurrAtt),
-    Temporary is CurrAtt,
-    retract(attack(_,_)),
-    asserta(attack(Temporary,BonusATTACK)).
+    char(Jobs,_,_),
+    item_weapon(_,JobsW,X,_),
+    Jobs == JobsW,
+    retract(weapon(_)),
+    asserta(weapon(X)),
+    character_bonus_stat_update.
+    
 
 using_armor(X) :-
     inventory(Z),
     isMember(X,Z),
-    item_armor(_,_,BonusDEFENSE),
-    defense(CurrDef, BonusCurrDef),
-    Temporary is CurrDef,
-    retract(defense(_,_)),
-    asserta(defense(Temporary, BonusDEFENSE)).
+    retract(armor(_)),
+    asserta(armor(X)),
+    character_bonus_stat_update.
 
 /* MEKANISME MEMAKAI POTION */
 using_potion(X) :-
     inventory(Z),
     isMember(X, Z),
     item_potion(_, _, ItemOption),
+    ItemOption == health,
+    health(CurrentHp, CurrentBonusHp),
+    CurrentBonusHpTemp is CurrentBonusHp + 1,
+    Temporary is CurrentHp,
+    retract(health(_, _)),
+    asserta(health(Temporary, CurrentBonusHpTemp)),
+    inventory_del(X).
+
+using_potion(X) :-
+    inventory(Z),
+    isMember(X, Z),
+    item_potion(_, _, ItemOption),
+    ItemOption == attack,
+    attack(CurrentAtt, CurrentBonusAtt),
+    CurrentBonusAttTemp is CurrentBonusAtt + 1,
+    Temporary is CurrentAtt,
+    retract(attack(_, _)),
+    asserta(attack(Temporary, CurrentBonusAttTemp)),
+    inventory_del(X).    
+
+using_potion(X) :-
+    inventory(Z),
+    isMember(X, Z),
+    item_potion(_, _, ItemOption),
     ItemOption == defense,
     defense(CurrDef, BonusCurrDef),
-    BonusCurrDef is BonusCurrDef + 1,
+    BonusCurrDefTemp is BonusCurrDef + 1,
     Temporary is CurrDef,
     retract(defense(_,_)),
-    asserta(defense(Temporary, )).
+    asserta(defense(Temporary, BonusCurrDefTemp)).
     inventory_del(X).
 
 /* BAGIAN ENEMY */
-calcDamageCommon([],0).
-calcDamageCommon([H|Tail],X):-
-    enemy_common(H), enemy_att(H,Att),
-    calcDamageCommon(T,Xn),
-    X is Xn+Att.
 
-calcDamageBoss([],0).
-calcDamageBoss([H|Tail],X):-
-    enemy_boss(H), enemy_att(H,Att),
+calcDamage([],0).
+calcDamage([H|Tail],X):-
+    enemy_type(_,H,Att,_,_),
     calcDamageCommon(T,Xn),
     X is Xn+Att.
 
@@ -481,12 +495,157 @@ random_enemy :-
     random(1, 20, Enemy_9_Y),
     random(1, 10, Enemy_10_X),
     random(1, 20, Enemy_10_Y),
-    /*Masukin ke map*/
+
+    retract(enemy_pos(_,_,_)),
+
+    asserta(enemy_pos(Enemy_1_X,Enemy_1_Y, 1)),
+    asserta(enemy_pos(Enemy_2_X,Enemy_2_Y, 2)),
+    asserta(enemy_pos(Enemy_3_X,Enemy_3_Y, 3)),
+    asserta(enemy_pos(Enemy_4_X,Enemy_4_Y, 1)),
+    asserta(enemy_pos(Enemy_5_X,Enemy_5_Y, 1)),
+    asserta(enemy_pos(Enemy_6_X,Enemy_6_Y, 2)),
+    asserta(enemy_pos(Enemy_7_X,Enemy_7_Y, 2)),
+    asserta(enemy_pos(Enemy_8_X,Enemy_8_Y, 2)),
+    asserta(enemy_pos(Enemy_9_X,Enemy_9_Y, 2)),
+    asserta(enemy_pos(Enemy_10_X,Enemy_10_Y, 4)).
+    
 
 /* BAGIAN QUEST */
-quest :-
+quest_tier(1,2,1,0).
+quest_tier(2,1,2,0).
+quest_tier(3,0,2,1).
+/* quest_tier(Lv_Quest,Kill_Slime,Kill_Goblin,Kill_Wolf) */
+
+/* Simpan tempat pengambilan quest */
+quest_pos(3,1).
+
+/* Pertama kali kita datang ke quest (Q), kita diberikan quest tier 1 */
+quest_init :-
+    quest_tier(1, Quest_Kill_Slime, Quest_Kill_Goblin, Quest_Kill_Wolf),
+    
+    retract(quest(_,_,_)),
+    asserta(quest(Quest_Kill_Slime, Quest_Kill_Goblin, Quest_Kill_Wolf)),
+    
+    retract(kill_count(_,_,_)),
+    asserta(kill_count(0, 0, 0)).
+
+quest_check :-
+    quest(CurrentQuest, Current_Quest_Kill_Slime, Current_Quest_Kill_Goblin, Current_Quest_Kill_Wolf),
+    
+    CurrentQuest <= 3,
+    
+    kill_count(Current_Kill_Slime, Current_Kill_Goblin, Current_Kill_Wolf),
+    
+    Current_Quest_Kill_Slime <= Current_Kill_Slime,
+    Current_Quest_Kill_Goblin <= Current_Kill_Goblin,
+    Current_Quest_Kill_Wolf <= Current_Kill_Wolf,
+
+    /* Reset Kill Count */
+    Current_Kill_Slime_New is Current_Kill_Slime - Current_Quest_Kill_Slime,
+    Current_Kill_Goblin_New is Current_Kill_Goblin - Current_Quest_Kill_Goblin,
+    Current_Kill_Wolf_New is Current_Kill_Wolf - Current_Quest_Kill_Wolf,
+
+    retract(kill_count(_, _, _)),
+    asserta(kill_count(Current_Kill_Slime_New, Current_Kill_Goblin_New, Current_Kill_Wolf_New)),
+    
+    /* Update Level, Exp*/
+    char(Current_Job, ),
+    
+    
+    
+/* Gunakan dynamic predicate quest dan kill_count */
+
+/* Update quest yang sedang aktif */
+
+/* Cek apakah misi berhasil (quest==killcount)*/
+    /* Kalau berhasil, kasih gold+exp */
+    
+
 
 /* BAGIAN EXPLORATION MECHANISM */
+
+/* Player Movement */
+gerak(Xi,Yi,w,Xf,Yf) :-
+    gameOn(1),
+    Yi < 10,
+    Yf is Yi + 1,
+    Xf is Xi, !.
+gerak(Xi,Yi,a,Xf,Yf) :-
+    gameOn(1),
+    Xi > 1,
+    Xf is Xi - 1,
+    Yf is Yi, !.
+gerak(Xi,Yi,s,Xf,Yf) :-
+    gameOn(1),
+    Yi > 1,
+    Yf is Yi + 1,
+    Xf is Xi, !.
+gerak(Xi,Yi,d,Xf,Yf) :-
+    gameOn(1),
+    Xi < 20,
+    Xf is Xi + 1,
+    Yf is Yi, !. 
+
+/* Mengecek apakah ada sesuatu yang dekat dengan kita */
+/* enemy */
+is_enemy_near :-
+    player_pos(X_Player, Y_Player),
+    enemy_pos(X_Enemy, Y_Enemy,_),
+    X_Player == X_Enemy + 1,
+    Y_Player == Y_Enemy.
+
+is_enemy_near :-
+    player_pos(X_Player, Y_Player),
+    enemy_pos(X_Enemy, Y_Enemy,_),
+    X_Player == X_Enemy - 1,
+    Y_Player == Y_Enemy.
+
+is_enemy_near :-
+    player_pos(X_Player, Y_Player),
+    enemy_pos(X_Enemy, Y_Enemy,_),
+    X_Player == X_Enemy,
+    Y_Player == Y_Enemy + 1.
+
+is_enemy_near :-
+    player_pos(X_Player, Y_Player),
+    enemy_pos(X_Enemy, Y_Enemy,_),
+    X_Player == X_Enemy,
+    Y_Player == Y_Enemy - 1.
+
+/* quest */
+is_quest_near :-
+    player_pos(X_Player, Y_Player),
+    quest_pos(X_Quest, Y_Quest),
+    X_Player == X_Quest + 1,
+    Y_Player == Y_Quest.
+
+is_quest_near :-
+    player_pos(X_Player, Y_Player),
+    quest_pos(X_Quest, Y_Quest),
+    X_Player == X_Quest - 1,
+    Y_Player == Y_Quest.
+
+is_quest_near :-
+    player_pos(X_Player, Y_Player),
+    quest_pos(X_Quest, Y_Quest),
+    X_Player == X_Quest,
+    Y_Player == Y_Quest + 1.
+
+is_quest_near :-
+    player_pos(X_Player, Y_Player),
+    quest_pos(X_Quest, Y_Quest),
+    X_Player == X_Quest,
+    Y_Player == Y_Quest - 1.
+
+/* 
+
+/* Buka quest */
+
+
+/* Buka shop */
+
+/* Ajak berantem musuh */
+
 
 /* BAGIAN BATTLE MECHANISM */
 
@@ -511,90 +670,178 @@ store :-
     writeln('%  4. Armor                         %'),
     writeln('%  5. Accesories                    %'),
     writeln('%  6. Potion                        %'),
-    read(X)
+    writeln('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),
+    read(X),
+    store_item_handling(X).
     
+store_item_handling(X) :-
     X == 1,
     writeln('You choose Swordsman Weapon'),
     /* Randomize dan masukan ke Inventory */
-    random(1, 3, Swordsman_Weapon),
-    Swordsman_Weapon == 1,
-    writeln('You get Wooden Sword'),
-
-    Swordsman_Weapon == 2,
-    writeln('You get Iron Sword'),
-
-    Swordsman_Weapon == 3,
-    writeln('You get Diamond Sword'),
-
+    random_item_swordsman.
+    
+store_item_handling(X) :-
     X == 2,
     writeln('You choose Archer Weapon'),
     /* Randomize dan masukan ke Inventory */
-    random(1, 3, Archer_Weapon),
-    Archer_Weapon == 1
-    writeln('You get Wooden Bow'),
-
-    Archer_Weapon == 2
-    writeln('You get Iron Bow'),
-
-    Archer_Weapon == 3
-    writeln('You get Diamond Bow'),
+    random_item_archer.
     
+store_item_handling(X) :- 
     X == 3,
     writeln('You choose Sorcerer Weapon'),
     /* Randomize dan masukan ke Inventory */
-    random(1, 3, Sorcerer_Weapon),
-    Sorcerer_Weapon == 1
-    writeln('You get Wooden Staff'),
-
-    Archer_Weapon == 2,
-    writeln('You get Iron Staff'),
-
-    Archer_Weapon == 3,
-    writeln('You get Diamond Staff'),
-
+    random_item_sorcerer.
+    
+store_item_handling(X) :-
     X == 4,
     writeln('You choose Armor'),
     /* Randomize dan masukan ke Inventory */
-    random(1, 3, Armor),
-    Armor == 1
-    writeln('You get Security Fest'),
-
-    Armor == 2,
-    writeln('You get Police Fest'),
-
-    Armor == 3,
-    writeln('You get Military Fest'),
-
+    random_item_armor.
+    
+store_item_handling(X) :-
     X == 5,
     writeln('You choose Accesories'),
     /* Randomize dan masukan ke Inventory */
-    random(1, 3, Accessories),
-    Accessories == 1
-    writeln('You get Batu Akik'),
+    random_item_accesorries.
+    
+store_item_handling(X) :-
+    X == 6,
+    writeln('Choose your Potion'),
+    writeln("1. Freshcare (health)"),
+    /* Potion tidak randomize langsung beli aja mang */
+    read(Y),
+    add_item_potion(Y).
 
+random_item_swordsman :-
+    random(1, 3, Swordsman_Weapon),
+    Swordsman_Weapon == 1,
+    writeln('You get Wooden Sword'),
+    inventory_add(wooden_sword).
+    
+random_item_swordsman :-
+    random(1, 3, Swordsman_Weapon),
+    Swordsman_Weapon == 2,
+    writeln('You get Iron Sword'),
+    inventory_add(iron_sword).
+    
+random_item_swordsman :-
+    random(1, 3, Swordsman_Weapon),
+    Swordsman_Weapon == 3,
+    writeln('You get Diamond Sword'),
+    inventory_add(diamond_sword).
+
+random_item_archer :-
+    random(1, 3, Archer_Weapon),
+    Archer_Weapon == 1,
+    writeln('You get Wooden Bow'),
+    inventory_add(wooden_bow).
+
+random_item_archer :-
+    random(1, 3, Archer_Weapon),
+    Archer_Weapon == 2,
+    writeln('You get Iron Bow'),
+    inventory_add(iron_bow).
+
+random_item_archer :-
+    random(1, 3, Archer_Weapon),
+    Archer_Weapon == 3,
+    writeln('You get Diamond Bow'),
+    inventory_add(diamond_bow).
+
+random_item_sorcerer :-
+    random(1, 3, Sorcerer_Weapon),
+    Sorcerer_Weapon == 1,
+    writeln('You get Wooden Staff'),
+    inventory_add(wooden_staff).
+
+random_item_sorcerer :-
+    random(1, 3, Sorcerer_Weapon),
+    Sorcerer_Weapon == 2,
+    writeln('You get Iron Staff'),
+    inventory_add(iron_staff).
+
+random_item_sorcerer :-
+    random(1, 3, Sorcerer_Weapon),
+    Sorcerer_Weapon == 3,
+    writeln('You get Diamond Staff'),
+    inventory_add(diamond_staff).
+
+random_item_armor :-
+    random(1, 3, Armor),
+    Armor == 1,
+    writeln('You get Security Vest'),
+    inventory_add(security_vest).
+    
+random_item_armor :-
+    random(1, 3, Armor),
+    Armor == 2,
+    writeln('You get Police Vest'),
+    inventory_add(police_vest).
+
+random_item_armor :-
+    random(1, 3, Armor),
+    Armor == 3,
+    writeln('You get Military Vest'),
+    inventory_add(military_vest).
+    
+random_item_accessories :-
+    random(1, 3, Accessories),
+    Accessories == 1,
+    writeln('You get Batu Akik'),
+    inventory_add(batu_akik).
+
+random_item_accessories :-
+    random(1, 3, Accessories),
     Accessories == 2,
     writeln('You get Anting Jamet'),
+    inventory_add(anting_jamet).
 
+random_item_accessories :-
+    random(1, 3, Accessories),
     Accessories == 3,
     writeln('You get Topi Pramuka'),
+    inventory_add(topi_pramuka).
 
+random_item_accessories :-
+    random(1, 3, Accessories),
     Accessories == 4,
     writeln('You get Kalung Corona'),
+    inventory_add(kalung_corona).
 
+random_item_accessories :-
+    random(1, 3, Accessories),
     Accessories == 5,
     writeln('You get Power Balance'),
+    inventory_add(powerbalance).
 
+random_item_accessories :-
+    random(1, 3, Accessories),
     Accessories == 6,
     writeln('You get Masker'),
+    inventory_add(masker).
 
+add_item_potion(Y) :-
+    Y == 1,
+    writeln('You get 5 freshcare potion'),
+    inventory_add_N(freshcare).
+
+add_item_potion(Y) :-
+    Y == 2,
+    writeln('You get 5 bodrex potion'),
+    inventory_add_N(bodrex,5).
+
+add_item_potion(Y) :-
+    Y == 3,
+    writeln('You get 5 antangin potion'),
+    inventory_add_N(antangin,5).
     
-    X == 6,
-    writeln('You choose Potion'),
-    /* Potion tidak randomize langsung beli aja mang */
+    
+
 
 
 /* Display New Game*/
 start :-
+    /*Insialisasi program*/
     writeln("________________________________________________________________"),
     writeln("/ ____|               | |   (_)        / ____|    | |       (_)"),
     writeln("| |  __  ___ _ __  ___| |__  _ _ __   | (___   ___| | _________"),
@@ -620,7 +867,37 @@ start :-
     writeln('%  9. Status : menampilkan status pemain                         %'),
     writeln('%  8. help   : menampilkan segala bantuan                        %'),
     writeln('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%').
-                                                               
+    restart,
+    asserta(player_pos(1,1)),
+    welcome_character_creation,
+    random_enemy,
+    retract(gameOn(_)),
+    asserta(gameOn(1)),
+    game_cond.
+    
+        
+
+    
+restart:-  
+    retract(gameOn(_)),
+    retract(killBoss(_)),
+    retract(char(_,_,_)),
+    retract(attack(_,_)),
+    retract(defense(_,_)),
+    retract(max_HP(_)),
+    retract(health(_,_)),
+    retract(weapon(_)),
+    retract(armor(_)),
+    retract(acc(_)),
+    retract(inventory(_)),
+    retract(money(_)),
+    retract(player_pos(_,_)),
+    retract(enemy_pos(_,_,_)),
+    retract(quest(_,_,_)),
+    retract(kill_count(_,_,_)),
+    asserta(gameOn(0)),
+    asserta(killBoss(0)),
+    restart.
 
 /* Tampilan Help */
 help :- writeln('_________________________________________________________________________________________'),
