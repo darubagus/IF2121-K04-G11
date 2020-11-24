@@ -169,7 +169,7 @@ game_cond :-
         read(Command),
         run(Command),
         (killBoss(1) ; gameOn(0)), !, 
-        write('The World is Ending!'), 
+        write('The World is Ending!'),nl, 
         write('You\'re Awake from The Dream'),halt.
         /* perulangan game*/
 
@@ -1480,6 +1480,7 @@ help :- write('_________________________________________________________________
         write('% 15. quit                : cabut                                             %'),nl,
         write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl.
 
+        
         
         
         
