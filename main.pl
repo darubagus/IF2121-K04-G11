@@ -21,7 +21,7 @@ Anggota Kelompok :
 /* char(Jobs,Level,Exp), attack(Att,BonusAtt), defense(Def,BonusDef), max_HP(Darah_Maksimal),  
  * health(Darah,BonusDarah), weapon(Senjata), armor(Armor), acc(Aksesoris),
  * inventory(List), player_pos(X,Y), enemy_pos(X,Y,Lv), quest(quest_lv,kill_slime,kill_goblin,kill_wolf,kill_sauron),
- * kill_count(slime,goblin,wolf), kill_Boss_Status(status), turn(jumlah_turn), current_enemy(current_HP,Lv,X_Pos,Y_Pos)  */
+ * kill_count(slime,goblin,wolf,sauron), kill_Boss_Status(status), turn(jumlah_turn), current_enemy(current_HP,Lv,X_Pos,Y_Pos)  */
 /*
 char(Jobs,Level,Exp),
 New_Level is Level + 1,
@@ -36,7 +36,7 @@ retract(inventory(_)),
 asserta(inventory(Y)).
 */
 /* Inisialisasi Game */
-/* Menyatakan stauts keberlangsungan game, */
+/* Menyatakan status keberlangsungan game, */
 /* gameOn(1) : permainan berjalan, player masih hidup */
 /* gameOn(0) : permainan berakhir, player terbunuh, atau permainan belum dimulai */ /*
 gameOn(1).
@@ -45,10 +45,10 @@ kill_Boss_Status(0).
 
 /* ENEMY */
 /* enemy_type(lv,kind,attack,defense,health)*/
-enemy_type(1,slime,10,5,30).
-enemy_type(2,goblin,20,10,60).
-enemy_type(3,wolf,40,20,120).
-enemy_type(4,sauron,100,50,500).
+enemy_type(1,slime,30,5,30).
+enemy_type(2,goblin,60,10,60).
+enemy_type(3,wolf,90,20,120).
+enemy_type(4,sauron,150,50,500).
 
 /* ITEM */
 /* item_weapon(tingkat senjata, char_jobs, char_weapon, kekuatan) */
@@ -97,6 +97,7 @@ item_potion(antangin,defense).
 
 run(map):- map_show.
 run(status):- status.
+run(inventory):- open_inventory,!.
 run(w):- gerak(w), nl,!.
 run(a):- gerak(a), nl,!.
 run(s):- gerak(s), nl,!.
@@ -106,6 +107,7 @@ run(attack):- info_enemy,nl,!.
 run(store):- shop,nl,!.
 run(quest):- quest,nl,!.
 run(quit) :- halt.
+run(teleport):- teleport,nl,!.
 
 /* ini menang
 cekMenang:- 
@@ -163,20 +165,67 @@ isMember(X, [Y|Xs]) :-
 
 /* STATUS */
 status :- 
+    char(Jobs,Level,Exp),
+    kill_count(Slime,Goblin,Wolf,Sauron),
     attack(Att,BonusAtt),
     defense(Def,BonusDef),
-    inventory(Inv),
     money(Uang),
     health(Hp,BonusHp),
     DisplayAtt is Att+BonusAtt,
     DisplayDef is Def+BonusDef,
     DisplayHP is Hp+BonusHp,
+    write('Jobs         = '), write(Jobs),nl,
+    write('Level        = '), write(Level),nl,
+    write('Experience   = '), write(Exp),nl,
     write('Health       = '), write(DisplayHP),nl,
     write('Attack       = '), write(DisplayAtt),nl,
     write('Defense      = '), write(DisplayDef),nl,
     write('Money        = '), write(Uang),nl,
-    write('Inventory    = '), nl,writeList(Inv),nl.
+    write('Kill Count   = '),nl,
+    write('     -> Slime  : '),write(Slime),nl,
+    write('     -> Goblin : '),write(Goblin),nl,
+    write('     -> Wolf   : '),write(Wolf),nl.
+    write('     -> Sauron   : '),write(Sauron),nl.
             
+/* BUKA_INVENTORY */
+open_inventory :-
+    inventory(Inv),
+    write('Your inventory = '), nl, writeList(Inv),nl,nl,
+    write('<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3'),nl,
+    write('<3                                  <3'),nl,
+    write('<3    Choose What You Want to Do:   <3'),nl,
+    write('<3                                  <3'),nl,
+    write('<3  1. Use Weapon                   <3'),nl,
+    write('<3  2. Use Armor                    <3'),nl,
+    write('<3  3. Use Potion                   <3'),nl,
+    write('<3  4. Quit                         <3'),nl,
+    write('<3                                  <3'),nl,
+    write('<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3'),nl,
+    write('>'),
+    read(X),
+    X >= 1, X < 4,!,
+    utilize(X),nl.
+
+utilize(X):-
+    X == 1,!,
+    write('Masukkan nama senjata : '),nl,
+    write('> '),
+    read(Senjata),
+    using_weapon(Senjata),nl.
+
+utilize(X):-
+    X == 2,!,
+    write('Masukkan nama pelidung : '),nl,
+    write('> '),
+    read(Pelindung),
+    using_armor(Pelindung),nl.
+
+utilize(X):-
+    X == 3,!,
+    write('Masukkan nama ramuan: '),nl,
+    write('> '),
+    read(Ramuan),
+    using_potion(Ramuan),nl.
 
 /* BAGIAN CHARACTER */
 welcome_character_creation :-
@@ -454,18 +503,23 @@ isi_inventory :-
     
 /* BAGIAN ITEM */
 /* MEKANISME MEMAKAI ITEM DARI INVENTORY (WEAPON,ARMOR,ACC) */
+/* misal kita swordsman,*/
+
+
+
 using_weapon(X) :-
     /* X adalah nama weapon, JobsW adalah jenis jobs yang sesuai dengan weapon, Z adalah inventory */
     inventory(Z),
-    isMember(X,Z),
+    isMember(X,Z), !,
     char(Jobs,_,_),
     item_weapon(_,JobsW,X,_),
-    Jobs == JobsW,
+    Jobs = JobsW,
     retract(weapon(_)),
     asserta(weapon(X)),
     write('Anda menggunakan senjata '), write(X), nl,
     character_bonus_stat_update.
     
+
 
 using_armor(X) :-
     inventory(Z),
@@ -478,8 +532,8 @@ using_armor(X) :-
 using_potion(X) :-
     inventory(Z),
     isMember(X, Z),
-    item_potion(_, _, ItemOption),
-    ItemOption == health,
+    item_potion(X, ItemOption),
+    ItemOption == health, !,
     health(CurrentHp, CurrentBonusHp),
     CurrentBonusHpTemp is CurrentBonusHp + 1,
     Temporary is CurrentHp,
@@ -491,8 +545,8 @@ using_potion(X) :-
 using_potion(X) :-
     inventory(Z),
     isMember(X, Z),
-    item_potion(_, _, ItemOption),
-    ItemOption == attack,
+    item_potion(X, ItemOption),
+    ItemOption == attack, !,
     attack(CurrentAtt, CurrentBonusAtt),
     CurrentBonusAttTemp is CurrentBonusAtt + 1,
     Temporary is CurrentAtt,
@@ -503,8 +557,8 @@ using_potion(X) :-
 using_potion(X) :-
     inventory(Z),
     isMember(X, Z),
-    item_potion(_, _, ItemOption),
-    ItemOption == defense,
+    item_potion(X, ItemOption),
+    ItemOption == defense, !,
     defense(CurrDef, BonusCurrDef),
     BonusCurrDefTemp is BonusCurrDef + 1,
     Temporary is CurrDef,
@@ -566,6 +620,7 @@ quest_init :-
     
     asserta(quest(1, Quest_Kill_Slime, Quest_Kill_Goblin, Quest_Kill_Wolf, Quest_Kill_Sauron)),
     
+    retract(kill_count(_,_,_,_)),
     asserta(kill_count(0, 0, 0, 0)).
 
 quest_check :-
@@ -667,6 +722,21 @@ gerak(d) :-
     asserta(player_pos(Xf,Yf)).
 
 gerak(d) :-
+    write('Kamu tidak bisa bergerak kesana!'), !.
+
+/* BAGIAN TELEPORT */
+teleport:-
+    write('Masukkan titik X :'),nl,
+    write('> '),
+    read(X),nl,
+    write('Masukkan titik Y :'),nl,
+    write('>'),
+    read(Y),nl,
+    isAccessible(X,Y),!,
+    retract(player_pos(_,_)),
+    asserta(player_pos(X,Y)).
+
+teleport:-
     write('Kamu tidak bisa bergerak kesana!'), !.
 
 /* Mengecek apakah ada sesuatu yang dekat dengan kita */
@@ -899,11 +969,7 @@ serang_action(X):-
 
 serang_action(X):-
     X == buka_inventory, !,
-    inventory(Inven),
-    write('Inventory  = '), writeList(Inven),
-    /* [fresh_care, bla, bla, bla]  */
-    read(X),
-    serang_action_inventory(X).
+    open_inventory.
 
 enemy_status(HP) :-
     HP > 0, !,
@@ -936,10 +1002,10 @@ enemy_status(HP) :-
     fail,!.
     
 tambah_kill_count(Lv_Enemy):-
-    kill_count(Slime,Goblin,Wolf),
+    kill_count(Slime,Goblin,Wolf,Sauron),
     Lv_Enemy == 1,
     new_Kill is slime+1,
-    retract(kill_count(_,_,_)),
+    retract(kill_count(_,_,_,_)),
     asserta(kill_count(new_Kill,goblin,wolf)),!.
     
 tambah_kill_count(Lv_Enemy):-
@@ -962,9 +1028,11 @@ tambah_kill_count(Lv_Enemy):-
     retract(kill_Boss_Status(_)),
     asserta(kill_Boss_Status(1)),!.
 
+/*
 serang_action_inventory(X):-
     using_potion(X),
     write('Potion berhasil digunakan.'),nl.
+*/
 
 lariyee :-
     random(1,4,Probability),
@@ -1002,8 +1070,6 @@ player_status(HP) :-
     write('<---- GAME OVER ----->'),nl,
     retract(gameOn(_)),
     asserta(gameOn(0)),!.
-
-
 
 
 health_damage(Result,Damage):-
@@ -1045,7 +1111,6 @@ store :-
     write(' ____) |  | | | |__| | | |  | |____'),nl,
     write('|_____/   |_|   ____/|_| | _|______|'),nl,
     write('_________________________ ____________'),nl,
-    money(Uang),
     write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
     write('%    Choose what you want to buy    %'),nl,
     write('%                                   %'),nl,
@@ -1055,45 +1120,61 @@ store :-
     write('%  4. Armor (20 Money)              %'),nl,
     write('%  5. Accesories (20 Money)         %'),nl,
     write('%  6. Potion (20 Money/5 potion)    %'),nl,
+    write('%  7. Quit                          %'),nl,
     write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
+    money(Uang),
     write('Your money :'),write(Uang),nl,
     write('> '),
     read(X),
-    store_item_handling(X),
-
+    X >= 1, X < 7, !,
     New_Uang is Uang - 20,
+    uang_cukup(New_Uang),
+    
+    store_item_handling(X),
     retract(money(_)),
     asserta(money(New_Uang)).
+
+uang_cukup(Uang):-
+    Uang >= 0, !.
+
+uang_cukup(Uang):-
+    Uang < 0,!,
+    write('Uang kamu tidak cukup!'),nl,fail.
     
 store_item_handling(X) :-
     X == 1,
     write('You choose Swordsman Weapon'),nl,
     /* Randomize dan masukan ke Inventory */
-    random_item_swordsman.
+    random(1, 3, Hasil_Gacha),
+    random_item_swordsman(Hasil_Gacha).
     
 store_item_handling(X) :-
     X == 2,
     write('You choose Archer Weapon'),nl,
     /* Randomize dan masukan ke Inventory */
-    random_item_archer.
+    random(1, 3, Hasil_Gacha),
+    random_item_archer(Hasil_Gacha).
 
 store_item_handling(X) :-
     X == 3,
     write('You choose Sorcerer Weapon'),nl,
     /* Randomize dan masukan ke Inventory */
-    random_item_sorcerer.
+    random(1, 3, Hasil_Gacha),
+    random_item_sorcerer(Hasil_Gacha).
 
 store_item_handling(X) :-
     X == 4,
     write('You choose Armor'),nl,
     /* Randomize dan masukan ke Inventory */
-    random_item_armor.
+    random(1, 3, Hasil_Gacha),
+    random_item_armor(Hasil_Gacha).
 
 store_item_handling(X) :-
     X == 5,
     write('You choose Accessories'),nl,
     /* Randomize dan masukan ke Inventory */
-    random_item_accessories.
+    random(1, 6, Hasil_Gacha),
+    random_item_accesories(Hasil_Gacha).
 
 store_item_handling(X) :-
     X == 6,
@@ -1106,111 +1187,93 @@ store_item_handling(X) :-
     read(Y),
     add_item_potion(Y).
     
-random_item_swordsman :-
-    random(1, 3, Swordsman_Weapon),
-    Swordsman_Weapon == 1,!,
+random_item_swordsman(Hasil_Gacha) :-
+    Hasil_Gacha == 1,!,
     write('You get Wooden Sword'),nl,
     inventory_add(wooden_sword).
     
-random_item_swordsman :-
-    random(1, 3, Swordsman_Weapon),
-    Swordsman_Weapon == 2,!,
+random_item_swordsman(Hasil_Gacha) :-
+    Hasil_Gacha == 2,!,
     write('You get Iron Sword'),nl,
     inventory_add(iron_sword).
     
-random_item_swordsman :-
-    random(1, 3, Swordsman_Weapon),
-    Swordsman_Weapon == 3,!,
+random_item_swordsman(Hasil_Gacha) :-
+    Hasil_Gacha == 3,!,
     write('You get Diamond Sword'),nl,
     inventory_add(diamond_sword).
 
 random_item_archer :-
-    random(1, 3, Archer_Weapon),
-    Archer_Weapon == 1,!,
+    Hasil_Gacha == 1,!,
     write('You get Wooden Bow'),nl,
     inventory_add(wooden_bow).
 
 random_item_archer :-
-    random(1, 3, Archer_Weapon),
-    Archer_Weapon == 2,!,
+    Hasil_Gacha == 2,!,
     write('You get Iron Bow'),nl,
     inventory_add(iron_bow).
 
 random_item_archer :-
-    random(1, 3, Archer_Weapon),
-    Archer_Weapon == 3,!,
+    Hasil_Gacha == 3,!,
     write('You get Diamond Bow'),nl,
     inventory_add(diamond_bow).
 
 random_item_sorcerer :-
-    random(1, 3, Sorcerer_Weapon),
-    Sorcerer_Weapon == 1,!,
+    Hasil_Gacha == 1,!,
     write('You get Wooden Staff'),nl,
     inventory_add(wooden_staff).
 
 random_item_sorcerer :-
-    random(1, 3, Sorcerer_Weapon),
-    Sorcerer_Weapon == 2,!,
+    Hasil_Gacha == 2,!,
     write('You get Iron Staff'),nl,
     inventory_add(iron_staff).
 
 random_item_sorcerer :-
-    random(1, 3, Sorcerer_Weapon),
-    Sorcerer_Weapon == 3,!,
+    Hasil_Gacha == 3,!,
     write('You get Diamond Staff'),nl,
     inventory_add(diamond_staff).
 
-random_item_armor :-
-    random(1, 3, Armor),
-    Armor == 1,!,
+random_item_armor(Hasil_Gacha) :-
+    Hasil_Gacha == 1,!,
     write('You get Security Vest'),nl,
     inventory_add(security_vest).
     
-random_item_armor :-
-    random(1, 3, Armor),
-    Armor == 2,!,
+random_item_armor(Hasil_Gacha) :-
+    Hasil_Gacha == 2,!,
     write('You get Police Vest'),nl,
     inventory_add(police_vest).
 
-random_item_armor :-
-    random(1, 3, Armor),
-    Armor == 3,!,
+random_item_armor(Hasil_Gacha) :-
+    Hasil_Gacha == 3,!,
     write('You get Military Vest'),nl,
     inventory_add(military_vest).
     
-random_item_accessories :-
-    random(1, 3, Accessories),
-    Accessories == 1,!,
+random_item_accesories(Hasil_Gacha) :-
+    Hasil_Gacha == 1,!,
     write('You get Batu Akik Accesories'),nl,
     inventory_add(batu_akik).
 
-random_item_accessories :-
-    random(1, 3, Accessories),
-    Accessories == 2,!,
+random_item_accesories(Hasil_Gacha) :-
+    Hasil_Gacha == 2,!,
     write('You get Anting Jamet Accesories'),nl,
     inventory_add(anting_jamet).
 
-random_item_accessories :-
-    random(1, 3, Accessories),
-    Accessories == 3,!,
+random_item_accesories(Hasil_Gacha) :-
+    Hasil_Gacha == 3,!,
     write('You get Topi Pramuka Accesories'),nl,
     inventory_add(topi_pramuka).
 
-random_item_accessories :-
-    random(1, 3, Accessories),
-    Accessories == 4,!,
+random_item_accesories(Hasil_Gacha) :-
+    Hasil_Gacha == 4,!,
     write('You get Kalung Corona Accesories'),nl,
     inventory_add(kalung_corona).
 
-random_item_accessories :-
-    random(1, 3, Accessories),
-    Accessories == 5,!,
+random_item_accesories(Hasil_Gacha) :-
+    Hasil_Gacha == 5,!,
     write('You get Power Balance Accesories'),nl,
     inventory_add(powerbalance).
 
-random_item_accessories :-
-    random(1, 3, Accessories),
-    Accessories == 6,!,
+random_item_accesories(Hasil_Gacha) :-
+    Hasil_Gacha == 6,!,
     write('You get Masker Accesories'),nl,
     inventory_add(masker).
 
@@ -1245,14 +1308,15 @@ start :-
     write('%  CREDIT :                                                      %'),nl,
     write('%        1. Muhammad Azhar Faturahman (13519020)                 %'),nl,
     write('%        2. Daru Bagus Dananjaya      (13519080)                 %'),nl,
-    write('%        3.                           %'),nl,
-    write('%        4. Rayhan Asadel (13519196)                             %'),nl,
+    write('%        3. Karel Renaldi             (13519180)                 %'),nl,
+    write('%        4. Rayhan Asadel             (13519196)                 %'),nl,
     write('%        5. Muhammad Dehan Al Kautsar (13519200)                 %'),nl,
     write('%                                                                %'),nl,
     write('%                                                                %'),nl,
     write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
     /*restart,*/
     asserta(player_pos(1,1)),
+    asserta(kill_count(0,0,0,0))
     welcome_character_creation,
     random_enemy,
     quest_init,
@@ -1295,21 +1359,23 @@ help :- write('_________________________________________________________________
         write(' ______| ___|_| |_|___/_| |_|_|_| |_| |_____/  ___|_| _ __,_|_|'),nl,
         write('_______________________________________________________________'),nl,
 
-        write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
-        write('%                        ~Genshin Sekai~                         %'),nl,
-        write('%                                                                %'),nl,
-        write('%  1. map    : menampilkan peta                                  %'),nl,
-        write('%  2. status : menampilkan kondisimu terkini                     %'),nl,
-        write('%  3. w      : gerak ke utara 1 langkah                          %'),nl,
-        write('%  4. s      : gerak ke selatan 1 langkah                        %'),nl,
-        write('%  5. d      : gerak ke ke timur 1 langkah                       %'),nl,
-        write('%  6. a      : gerak ke barat 1 langkah                          %'),nl,
-        write('%  7. help   : menampilkan segala bantuan                        %'),nl,
-        write('%  8. attack : menyerang musuh                                   %'),nl,
-        write('%  9. store  : masuk ke dalam toko                               %'),nl,
-        write('% 10. quest  : mengecek current quest                            %'),nl,
-        write('% 11. quit   : cabut                                             %'),nl,
-        write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
+        write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
+        write('%                        ~Genshin Sekai~                             %'),nl,
+        write('%                                                                    %'),nl,
+        write('%  1. map        : menampilkan peta                                  %'),nl,
+        write('%  2. status     : menampilkan kondisimu terkini                     %'),nl,
+        write('%  3. w          : gerak ke utara 1 langkah                          %'),nl,
+        write('%  4. s          : gerak ke selatan 1 langkah                        %'),nl,
+        write('%  5. d          : gerak ke ke timur 1 langkah                       %'),nl,
+        write('%  6. a          : gerak ke barat 1 langkah                          %'),nl,
+        write('%  7. help       : menampilkan segala bantuan                        %'),nl,
+        write('%  8. attack     : menyerang musuh                                   %'),nl,
+        write('%  9. store      : masuk ke dalam toko                               %'),nl,
+        write('% 10. quest      : mengecek current quest                            %'),nl,
+        write('% 11. teleport   : pindah ke titik sesuka hati                       %'),nl,
+        write('% 12. inventory  : menampilkan inventory                             %'),nl,
+        write('% 11. quit       : cabut                                             %'),nl,
+        write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
         write(''),nl,
         write('Legends:'),nl,
         write('P = Player'),nl,
