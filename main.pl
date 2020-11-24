@@ -16,12 +16,12 @@ Anggota Kelompok :
 /* Dynamic predicate */
 :- dynamic(char/3, attack/2, defense/2, max_HP/1, health/2,
    weapon/1, armor/1, acc/1, inventory/1, money/1,
-   player_pos/2, enemy_pos/3, quest/5, kill_count/4, kill_Boss_Status/1, 
+   player_pos/2, enemy_pos/3, quest/5, kill_count/4, killBoss/1, 
    turn/1, current_enemy/4, gameOn/1).
 /* char(Jobs,Level,Exp), attack(Att,BonusAtt), defense(Def,BonusDef), max_HP(Darah_Maksimal),  
  * health(Darah,BonusDarah), weapon(Senjata), armor(Armor), acc(Aksesoris),
  * inventory(List), player_pos(X,Y), enemy_pos(X,Y,Lv), quest(quest_lv,kill_slime,kill_goblin,kill_wolf,kill_sauron),
- * kill_count(slime,goblin,wolf,sauron), kill_Boss_Status(status), turn(jumlah_turn), current_enemy(current_HP,Lv,X_Pos,Y_Pos)  */
+ * kill_count(slime,goblin,wolf,sauron), killBoss(status), turn(jumlah_turn), current_enemy(current_HP,Lv,X_Pos,Y_Pos)  */
 /*
 char(Jobs,Level,Exp),
 New_Level is Level + 1,
@@ -40,7 +40,7 @@ asserta(inventory(Y)).
 /* gameOn(1) : permainan berjalan, player masih hidup */
 /* gameOn(0) : permainan berakhir, player terbunuh, atau permainan belum dimulai */ /*
 gameOn(1).
-kill_Boss_Status(0).
+killBoss(0).
 */
 
 /* ENEMY */
@@ -184,8 +184,8 @@ status :-
     write('Kill Count   = '),nl,
     write('     -> Slime  : '),write(Slime),nl,
     write('     -> Goblin : '),write(Goblin),nl,
-    write('     -> Wolf   : '),write(Wolf),nl.
-    write('     -> Sauron   : '),write(Sauron),nl.
+    write('     -> Wolf   : '),write(Wolf),nl,
+    write('     -> Sauron : '),write(Sauron),nl.
             
 /* BUKA_INVENTORY */
 open_inventory :-
@@ -385,7 +385,7 @@ character_bonus_stat_acc(Acc_Name) :-
     /* Hitung Bonus */
     Efek == health,
     health(HP,BonusHP),
-    New_BonusHP is BonusHP + Lv*4,
+    New_BonusHP is BonusHP + Lv*10,
     retract(health(_,_)),
     asserta(health(HP,New_BonusHP)),!.
 
@@ -395,7 +395,7 @@ character_bonus_stat_acc(Acc_Name) :-
     /* Hitung Bonus */
     Efek == attack,
     attack(Att,BonusAtt),
-    New_BonusAtt is BonusAtt + Lv*4,
+    New_BonusAtt is BonusAtt + Lv*20,
     retract(attack(_,_)),
     asserta(attack(Att,New_BonusAtt)),!.
 
@@ -405,7 +405,7 @@ character_bonus_stat_acc(Acc_Name) :-
     /* Hitung Bonus */
     Efek == defense,
     defense(Def,BonusDef),
-    New_BonusDef is BonusDef + Lv*4,
+    New_BonusDef is BonusDef + Lv*20,
     retract(defense(_,_)),
     asserta(defense(Def,New_BonusDef)),!.
 
@@ -535,7 +535,7 @@ using_potion(X) :-
     item_potion(X, ItemOption),
     ItemOption == health, !,
     health(CurrentHp, CurrentBonusHp),
-    CurrentBonusHpTemp is CurrentBonusHp + 1,
+    CurrentBonusHpTemp is CurrentBonusHp + 10,
     Temporary is CurrentHp,
     max_HP(Hp),
     retract(health(_, _)),
@@ -548,7 +548,7 @@ using_potion(X) :-
     item_potion(X, ItemOption),
     ItemOption == attack, !,
     attack(CurrentAtt, CurrentBonusAtt),
-    CurrentBonusAttTemp is CurrentBonusAtt + 1,
+    CurrentBonusAttTemp is CurrentBonusAtt + 50,
     Temporary is CurrentAtt,
     retract(attack(_, _)),
     asserta(attack(Temporary, CurrentBonusAttTemp)),
@@ -560,7 +560,7 @@ using_potion(X) :-
     item_potion(X, ItemOption),
     ItemOption == defense, !,
     defense(CurrDef, BonusCurrDef),
-    BonusCurrDefTemp is BonusCurrDef + 1,
+    BonusCurrDefTemp is BonusCurrDef + 50,
     Temporary is CurrDef,
     retract(defense(_,_)),
     asserta(defense(Temporary, BonusCurrDefTemp)).
@@ -620,13 +620,12 @@ quest_init :-
     
     asserta(quest(1, Quest_Kill_Slime, Quest_Kill_Goblin, Quest_Kill_Wolf, Quest_Kill_Sauron)),
     
-    retract(kill_count(_,_,_,_)),
     asserta(kill_count(0, 0, 0, 0)).
 
 quest_check :-
     quest(Current_Quest_Level, Current_Quest_Kill_Slime, Current_Quest_Kill_Goblin, Current_Quest_Kill_Wolf, Current_Quest_Kill_Sauron),
     
-    Current_Quest_Level < 4,
+    Current_Quest_Level < 4, !,
     
     kill_count(Current_Kill_Slime, Current_Kill_Goblin, Current_Kill_Wolf, Current_Kill_Sauron),
     
@@ -641,26 +640,36 @@ quest_check :-
     Current_Kill_Wolf_New is Current_Kill_Wolf - Current_Quest_Kill_Wolf,
     Current_Kill_Sauron_New is Current_Kill_Sauron - Current_Quest_Kill_Sauron,
 
-    write('You have completed the quest! Lets continue our journey! '),nl,
+    New_Quest_Level is Current_Quest_Level+1,
+    retract(quest(_,_,_,_,_)),
+    quest_tier(New_Quest_Level,Slime,Goblin,Wolf,Sauron),
+    asserta(quest(New_Quest_Level,Slime,Goblin,Wolf,Sauron)),
+
+    write('Congratulation, you have completed the quest! Lets continue our journey! '),nl,
     retract(kill_count(_, _, _, _)),
     asserta(kill_count(Current_Kill_Slime_New, Current_Kill_Goblin_New, Current_Kill_Wolf_New, Current_Kill_Sauron_New)),
     
+    /* bagian ngasih hadiah ke player*/
     char(Current_Job, Current_Level, Current_Exp),
-    New_Exp is Current_Exp + (Current_Quest_Level * 100),
+    New_Exp is Current_Exp + (Current_Quest_Level * 20),
+    money(Uang),
+    New_Uang is Uang + 200*Current_Quest_Level,
+    retract(money(_)),
+    asserta(money(New_Uang)),
     retract(char(_, _, _)),
     asserta(char(Current_Job, Current_Level, New_Exp)).
 
 quest_check :-
     quest(Current_Quest_Level, Current_Quest_Kill_Slime, Current_Quest_Kill_Goblin, Current_Quest_Kill_Wolf, Current_Quest_Kill_Sauron),
     
-    Current_Quest_Level == 4,
+    Current_Quest_Level == 4, !,
     
     kill_count(Current_Kill_Slime, Current_Kill_Goblin, Current_Kill_Wolf, Current_Kill_Sauron),
 
     Current_Kill_Sauron == Current_Quest_Kill_Sauron,
 
-    retract(kill_Boss_Status(_)),
-    asserta(kill_Boss_Status(1)).
+    retract(killBoss(_)),
+    asserta(killBoss(1)).
     
 /* Gunakan dynamic predicate quest dan kill_count */
 
@@ -706,7 +715,7 @@ gerak(s) :-
     player_pos(Xi,Yi),
     Yf is Yi - 1,
     Xf is Xi, !,
-    isAccessible(Xf,Yf),
+    isAccessible(Xf,Yf), !,
     retract(player_pos(_,_)),
     asserta(player_pos(Xf,Yf)).
 
@@ -823,16 +832,17 @@ quest_open :-
 
     quest(Current_Quest_Level, Current_Kill_Slime, Current_Kill_Goblin, Current_Kill_Wolf, Current_Kill_Sauron),
     write('Your current quest level : '), write(Current_Quest_Level),nl,
-    Current_Quest_Level < 4,
+    Current_Quest_Level < 4, !,
     write('Task'),nl,
     write('1. Kill Slime   :'), write(Current_Kill_Slime),nl,
     write('2. Kill Goblin  :'), write(Current_Kill_Goblin),nl,
-    write('3. Kill Wolf    :'), write(Current_Kill_Wolf),nl.
+    write('3. Kill Wolf    :'), write(Current_Kill_Wolf),nl,
+    quest_check.
     
 quest_open :-
     quest(Current_Quest_Level, Current_Kill_Slime, Current_Kill_Goblin, Current_Kill_Wolf, Current_Kill_Sauron),
     write('Your current quest level : '), write(Current_Quest_Level),nl,
-    Current_Quest_Level == 4,
+    Current_Quest_Level == 4, !,
     write('Task'),
     write('1. Kill Boss (Sauron)   :'), write(Current_Kill_Sauron),nl.
 
@@ -914,11 +924,13 @@ info_current_battle :-
     DisplayAtt is Att+BonusAtt,
     DisplayDef is Def+BonusDef,
     DisplayHP is HP+BonusHP,
+    turn(C_Turn),
     write('<------------------ BATTLE INFO ------------------> '),nl,
     write(' Player Jobs : '), write(Jobs), nl,
     write(' Player HP   : '), write(DisplayHP), nl,
     write(' Player Att  : '), write(DisplayAtt), nl,
     write(' Player Def  : '), write(DisplayDef), nl,
+    write(' Special Attack ('),write(C_Turn),write('/3)'),nl,
     write(' -------------------------------------------------'),nl,
     write(' Enemy Type  : '), write(Enemy_Kind), nl,
     write(' Enemy HP    : '), write(HP_Enemy), nl,
@@ -999,34 +1011,35 @@ enemy_status(HP) :-
     retract(current_enemy(_,_,_,_)),
     retract(enemy_pos(X,Y,Lv_Enemy)),
     retract(turn(_)),
-    fail,!.
+    !,fail.
     
 tambah_kill_count(Lv_Enemy):-
     kill_count(Slime,Goblin,Wolf,Sauron),
     Lv_Enemy == 1,
-    new_Kill is slime+1,
+    New_Kill is Slime+1,
     retract(kill_count(_,_,_,_)),
-    asserta(kill_count(new_Kill,goblin,wolf)),!.
+    asserta(kill_count(New_Kill,Goblin,Wolf,Sauron)),!.
     
 tambah_kill_count(Lv_Enemy):-
-    kill_count(Slime,Goblin,Wolf),
+    kill_count(Slime,Goblin,Wolf,Sauron),
     Lv_Enemy == 2,
     New_Kill is Goblin+1,
-    retract(kill_count(_,_,_)),
-    asserta(kill_count(Slime,New_Kill,Wolf)),!.
+    retract(kill_count(_,_,_,_)),
+    asserta(kill_count(Slime,New_Kill,Wolf,Sauron)),!.
 
 tambah_kill_count(Lv_Enemy):-
-    kill_count(Slime,Goblin,Wolf),
+    kill_count(Slime,Goblin,Wolf,Sauron),
     Lv_Enemy == 3,
-    New_Kill is wolf+1,
-    retract(kill_count(_,_,_)),
-    asserta(kill_count(Slime,Goblin,New_Kill)),!.
+    New_Kill is Wolf+1,
+    retract(kill_count(_,_,_,_)),
+    asserta(kill_count(Slime,Goblin,New_Kill,Sauron)),!.
 
 tambah_kill_count(Lv_Enemy):-
-    kill_Boss_Status(X),
+    kill_count(Slime,Goblin,Wolf,Sauron),
     Lv_Enemy == 4,
-    retract(kill_Boss_Status(_)),
-    asserta(kill_Boss_Status(1)),!.
+    New_Kill is Sauron+1,
+    retract(kill_count(_,_,_,_)),
+    asserta(kill_count(Slime,Goblin,Wolf,New_Kill)),!.
 
 /*
 serang_action_inventory(X):-
@@ -1069,21 +1082,21 @@ player_status(HP) :-
     write(' </3  MODAR KOE!!  </3 '),nl,
     write('<---- GAME OVER ----->'),nl,
     retract(gameOn(_)),
-    asserta(gameOn(0)),!.
+    asserta(gameOn(0)),!,halt.
 
 
 health_damage(Result,Damage):-
     health(Darah,BonusDarah),
-    Result > 0,
+    Result > 0,!,
     retract(health(_,_)),
     asserta(health(Darah,Result)),!.
 
 health_damage(Result,Damage):-
     health(Darah,BonusDarah),
-    Result =< 0,
-    Result is Darah + BonusDarah - Damage,
+    Result =< 0, !,
+    New_Result is Darah + BonusDarah - Damage,
     retract(health(_,_)),
-    asserta(health(Result,0)),!.
+    asserta(health(New_Result,0)),!.
 
 damage_calculator(Att,BonusAtt,Def,BonusDef,Damage) :-
     Total is Att+BonusAtt-Def-BonusDef,
@@ -1114,12 +1127,12 @@ store :-
     write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
     write('%    Choose what you want to buy    %'),nl,
     write('%                                   %'),nl,
-    write('%  1. Swordsman Weapon (20 Money)   %'),nl,
-    write('%  2. Archer Weapon (20 Money)      %'),nl,
-    write('%  3. Sorcerer Weapon (20 Money)    %'),nl,
-    write('%  4. Armor (20 Money)              %'),nl,
-    write('%  5. Accesories (20 Money)         %'),nl,
-    write('%  6. Potion (20 Money/5 potion)    %'),nl,
+    write('%  1. Swordsman Weapon (50 Money)   %'),nl,
+    write('%  2. Archer Weapon (50 Money)      %'),nl,
+    write('%  3. Sorcerer Weapon (50 Money)    %'),nl,
+    write('%  4. Armor (50 Money)              %'),nl,
+    write('%  5. Accesories (50 Money)         %'),nl,
+    write('%  6. Potion (50 Money/5 potion)    %'),nl,
     write('%  7. Quit                          %'),nl,
     write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
     money(Uang),
@@ -1127,7 +1140,7 @@ store :-
     write('> '),
     read(X),
     X >= 1, X < 7, !,
-    New_Uang is Uang - 20,
+    New_Uang is Uang - 50,
     uang_cukup(New_Uang),
     
     store_item_handling(X),
@@ -1316,7 +1329,6 @@ start :-
     write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
     /*restart,*/
     asserta(player_pos(1,1)),
-    asserta(kill_count(0,0,0,0))
     welcome_character_creation,
     random_enemy,
     quest_init,
@@ -1380,7 +1392,6 @@ help :- write('_________________________________________________________________
         write('Legends:'),nl,
         write('P = Player'),nl,
         write('S = Store'),nl,
-        write('F = Hangar'),nl,
         write('E = Enemy'),nl,
         write('D = Boss Enemy'),nl,
         write('Q = Quest'),nl,
