@@ -43,36 +43,78 @@ gameOn(1).
 killBoss(0).
 */
 
+/*Save and Load*/
+savegame(FileName):-
+    tell(FileName),
+    listing(char),
+    listing(attack),
+    listing(defense),
+    listing(max_HP),
+    listing(health),
+    listing(weapon),
+    listing(armor),
+    listing(acc),
+    listing(money),
+    listing(player_pos),
+    listing(inventory),
+    listing(enemy_pos),
+    listing(quest),
+    listing(kill_count),
+    listing(killBoss),
+    listing(turn),
+    listing(current_enemy),
+    listing(gameOn), told.
+
+loadgame(FileName):-
+    retractall(char(_,_,_)),
+    retractall(attack(_,_)),
+    retractall(defense(_,_)),
+    retractall(max_HP(_)),
+    retractall(health(_,_)),
+    retractall(weapon(_)),
+    retractall(armor(_)),
+    retractall(acc(_)),
+    retractall(money(_)),
+    retractall(player_pos(_,_)),
+    retractall(inventory(_)),
+    retractall(enemy_pos(_,_,_)),
+    retractall(quest(_,_,_,_,_)),
+    retractall(kill_count(_,_,_,_)),
+    retractall(killBoss(_)),
+    retractall(turn(_)),
+    retractall(current_enemy(_,_,_,_)),
+    retractall(gameOn(_)), [FileName].
+
 /* ENEMY */
 /* enemy_type(lv,kind,attack,defense,health)*/
-enemy_type(1,slime,30,5,30).
-enemy_type(2,goblin,60,10,60).
-enemy_type(3,wolf,90,20,120).
-enemy_type(4,sauron,150,50,500).
+enemy_type(1,slime,30,5,50).
+enemy_type(2,goblin,60,10,100).
+enemy_type(3,wolf,90,20,200).
+enemy_type(4,sauron,150,50,1000).
 
 /* ITEM */
 /* item_weapon(tingkat senjata, char_jobs, char_weapon, kekuatan) */
 
 /* Item Jobs Swordsman */
 item_weapon(1,swordsman,wooden_sword,10).
-item_weapon(2,swordsman,iron_sword,25).
-item_weapon(3,swordsman,diamond_sword,50).
+item_weapon(2,swordsman,iron_sword,20).
+item_weapon(3,swordsman,diamond_sword,40).
 
 /* Item Jobs Archer */
 item_weapon(1,archer,wooden_bow,10).
-item_weapon(2,archer,iron_bow,25).
-item_weapon(3,archer,diamond_bow,50).
+item_weapon(2,archer,iron_bow,20).
+item_weapon(3,archer,diamond_bow,40).
 
 /* Item Jobs Sorcerer */
 item_weapon(1,sorcerer,wooden_staff,10).
-item_weapon(2,sorcerer,iron_staff,25).
-item_weapon(3,sorcerer,diamond_staff,50).
+item_weapon(2,sorcerer,iron_staff,20).
+item_weapon(3,sorcerer,diamond_staff,40).
 
 /* Armor */
 /* item_armor(tingkat pelindung, char_armor, defense) */
 item_armor(1,security_vest,10).
-item_armor(2,police_vest,25).
-item_armor(3,military_vest,50).
+item_armor(2,police_vest,20).
+item_armor(3,military_vest,40).
 
 /* ULTRA RARE ITEM */
 /* item_rare(weapon,keris).         /* one hit man 
@@ -106,6 +148,8 @@ run(help):- help,nl,!.
 run(attack):- info_enemy,nl,!.
 run(store):- shop,nl,!.
 run(quest):- quest,nl,!.
+run(savegame(FileName)):- savegame(FileName),nl,!.
+run(loadgame(FileName)):- loadgame(FileName),nl,!.
 run(quit) :- halt.
 run(teleport):- teleport,nl,!.
 
@@ -133,7 +177,7 @@ game_cond :-
 
 writeList([]):- nl.
 writeList([H|T]):-
-    write('->'),write(H),nl,
+    write('    ->'),write(H),nl,
     writeList(T).
 
 isListEmpty([]).
@@ -191,7 +235,7 @@ status :-
 open_inventory :-
     inventory(Inv),
     write('Your inventory = '), nl, writeList(Inv),nl,nl,
-    write('<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3'),nl,
+    write('<------------------------------------>'),nl,
     write('<3                                  <3'),nl,
     write('<3    Choose What You Want to Do:   <3'),nl,
     write('<3                                  <3'),nl,
@@ -200,8 +244,8 @@ open_inventory :-
     write('<3  3. Use Potion                   <3'),nl,
     write('<3  4. Quit                         <3'),nl,
     write('<3                                  <3'),nl,
-    write('<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3<3'),nl,
-    write('>'),
+    write('<------------------------------------>'),nl,nl,
+    write('> '),
     read(X),
     X >= 1, X < 4,!,
     utilize(X),nl.
@@ -268,9 +312,9 @@ character_creation(X) :-
     asserta(char(swordsman,1,0)),
     /* STATUS DASAR */
     asserta(attack(10,0)),
-    asserta(defense(20,0)),
-    asserta(max_HP(100)),
-    asserta(health(100,0)).
+    asserta(defense(10,0)),
+    asserta(max_HP(120)),
+    asserta(health(120,0)).
 
 character_creation(X) :-
     X == 2, !,
@@ -278,7 +322,7 @@ character_creation(X) :-
     asserta(char(archer,1,0)),
     /* STATUS DASAR */
     asserta(attack(20,0)),
-    asserta(defense(10,0)),
+    asserta(defense(5,0)),
     asserta(max_HP(100)),
     asserta(health(100,0)).
 
@@ -288,7 +332,7 @@ character_creation(X) :-
     asserta(char(sorcerer,1,0)),
     /* STATUS DASAR */
     asserta(attack(30,0)),
-    asserta(defense(10,0)),
+    asserta(defense(0,0)),
     asserta(max_HP(80)),
     asserta(health(80,0)).
 
@@ -299,9 +343,9 @@ character_level_up :-
     /* PANGGIL VARIABEL CHARACTER */
     char(X,Y,Z),
     /* PERHITUNGAN LEVEL UP, EXP >= LEVEL*10 */
-    Z >= Y*10, !,
+    Z >= Y*20, !,
     Yf is Y+1,
-    Zf is Z-Y*10,
+    Zf is Z-Y*20,
     /* UPDATE CHAR */
     retract(char(_,_,_)),
     asserta(char(X,Yf,Zf)),
@@ -310,9 +354,9 @@ character_level_up :-
     defense(Def,BonusDef),
     max_HP(MaxHP),
     health(Darah,BonusDarah),
-    UP_Att is Att + Yf*10,
-    UP_Def is Def + Yf*10,
-    UP_MaxHP is MaxHP + Yf*50,
+    UP_Att is Att + Yf*2,
+    UP_Def is Def + Yf*2,
+    UP_MaxHP is MaxHP + Yf*10,
     UP_Darah is UP_MaxHP,
     /* UPDATE STATUS */
     retract(attack(_,_)),
@@ -331,7 +375,7 @@ character_level_up :-
     DisplayNewAtt is UP_Att+BonusAtt,
     DisplayNewDef is UP_Def+BonusDef,
     DisplayNewHP is UP_Darah+BonusDarah,
-    write('Health       = '), write(DisplayHP), write(' -> '), write(DisplayNewHP),nl,
+    write('Health       = '), write(DisplayHP),write('/'),write(MaxHP), write(' -> '), write(DisplayNewHP),write('/'),write(UP_MaxHP)nl,
     write('Attack       = '), write(DisplayAtt), write(' -> '), write(DisplayNewAtt),nl,
     write('Defense      = '), write(DisplayDef), write(' -> '), write(DisplayNewDef),nl,
     write('<------------------------------------------------------->'),nl.
