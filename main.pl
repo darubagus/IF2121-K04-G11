@@ -211,21 +211,24 @@ utilize(X):-
     write('Masukkan nama senjata : '),nl,
     write('> '),
     read(Senjata),
-    using_weapon(Senjata),nl.
+    using_weapon(Senjata),nl,
+    write('YES! Senjata berhasil digunakan!'),nl.
 
 utilize(X):-
     X == 2,!,
     write('Masukkan nama pelidung : '),nl,
     write('> '),
     read(Pelindung),
-    using_armor(Pelindung),nl.
+    using_armor(Pelindung),nl,
+    write('YES! Armor berhasil digunakan!'),nl.
 
 utilize(X):-
     X == 3,!,
     write('Masukkan nama ramuan: '),nl,
     write('> '),
     read(Ramuan),
-    using_potion(Ramuan),nl.
+    using_potion(Ramuan),nl,
+    write('YES! Potion berhasil digunakan!'),nl.
 
 /* BAGIAN CHARACTER */
 welcome_character_creation :-
@@ -901,15 +904,15 @@ serang :-
 serang_musuh :-
     gameOn(1),
     info_current_battle,
+    turn(N),
+    N1 is N + 1,
+    retract(turn(_)),
+    asserta(turn(N1)),
     write('Do something!    (serang/serangan_maut/buka_inventory/lari)'),nl,
     write('> '),
     read(X), !,
     serang_action(X),
    /* X \= lari, */
-    turn(N),
-    N1 is N + 1,
-    retract(turn(_)),
-    asserta(turn(N1)),
     serang_player.
     
 /* enemy_type(lv,kind,attack,defense,health)*/
@@ -1215,32 +1218,32 @@ random_item_swordsman(Hasil_Gacha) :-
     write('You get Diamond Sword'),nl,
     inventory_add(diamond_sword).
 
-random_item_archer :-
+random_item_archer(Hasil_Gacha) :-
     Hasil_Gacha == 1,!,
     write('You get Wooden Bow'),nl,
     inventory_add(wooden_bow).
 
-random_item_archer :-
+random_item_archer(Hasil_Gacha) :-
     Hasil_Gacha == 2,!,
     write('You get Iron Bow'),nl,
     inventory_add(iron_bow).
 
-random_item_archer :-
+random_item_archer(Hasil_Gacha) :-
     Hasil_Gacha == 3,!,
     write('You get Diamond Bow'),nl,
     inventory_add(diamond_bow).
 
-random_item_sorcerer :-
+random_item_sorcerer(Hasil_Gacha) :-
     Hasil_Gacha == 1,!,
     write('You get Wooden Staff'),nl,
     inventory_add(wooden_staff).
 
-random_item_sorcerer :-
+random_item_sorcerer(Hasil_Gacha) :-
     Hasil_Gacha == 2,!,
     write('You get Iron Staff'),nl,
     inventory_add(iron_staff).
 
-random_item_sorcerer :-
+random_item_sorcerer(Hasil_Gacha) :-
     Hasil_Gacha == 3,!,
     write('You get Diamond Staff'),nl,
     inventory_add(diamond_staff).
