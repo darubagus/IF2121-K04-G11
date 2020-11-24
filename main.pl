@@ -739,7 +739,7 @@ teleport:-
     write('> '),
     read(X),nl,
     write('Masukkan titik Y :'),nl,
-    write('>'),
+    write('> '),
     read(Y),nl,
     isAccessible(X,Y),!,
     retract(player_pos(_,_)),
