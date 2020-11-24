@@ -38,40 +38,41 @@ asserta(inventory(Y)).
 /* Inisialisasi Game */
 /* Menyatakan stauts keberlangsungan game, */
 /* gameOn(1) : permainan berjalan, player masih hidup */
-/* gameOn(0) : permainan berakhir, player terbunuh, atau permainan belum dimulai */
-gameOn(0).
+/* gameOn(0) : permainan berakhir, player terbunuh, atau permainan belum dimulai */ /*
+gameOn(1).
 kill_Boss_Status(0).
+*/
 
 /* ENEMY */
 /* enemy_type(lv,kind,attack,defense,health)*/
-enemy_type(1,slime,2,5,20).
-enemy_type(2,goblin,4,10,40).
-enemy_type(3,wolf,8,20,80).
-enemy_type(4,sauron,20,40,200).
+enemy_type(1,slime,10,5,30).
+enemy_type(2,goblin,20,10,60).
+enemy_type(3,wolf,40,20,120).
+enemy_type(4,sauron,100,50,500).
 
 /* ITEM */
 /* item_weapon(tingkat senjata, char_jobs, char_weapon, kekuatan) */
 
 /* Item Jobs Swordsman */
 item_weapon(1,swordsman,wooden_sword,10).
-item_weapon(2,swordsman,iron_sword,20).
-item_weapon(3,swordsman,diamond_sword,30).
+item_weapon(2,swordsman,iron_sword,25).
+item_weapon(3,swordsman,diamond_sword,50).
 
 /* Item Jobs Archer */
 item_weapon(1,archer,wooden_bow,10).
-item_weapon(2,archer,iron_bow,20).
-item_weapon(3,archer,diamond_bow,30).
+item_weapon(2,archer,iron_bow,25).
+item_weapon(3,archer,diamond_bow,50).
 
 /* Item Jobs Sorcerer */
 item_weapon(1,sorcerer,wooden_staff,10).
-item_weapon(2,sorcerer,iron_staff,20).
-item_weapon(3,sorcerer,diamond_staff,30).
+item_weapon(2,sorcerer,iron_staff,25).
+item_weapon(3,sorcerer,diamond_staff,50).
 
 /* Armor */
 /* item_armor(tingkat pelindung, char_armor, defense) */
 item_armor(1,security_vest,10).
-item_armor(2,police_vest,20).
-item_armor(3,military_vest,30).
+item_armor(2,police_vest,25).
+item_armor(3,military_vest,50).
 
 /* ULTRA RARE ITEM */
 /* item_rare(weapon,keris).         /* one hit man 
@@ -106,8 +107,13 @@ run(store):- shop,nl,!.
 run(quest):- quest,nl,!.
 run(quit) :- halt.
 
-cekMenang:- killBoss(X), X==1.
-
+/* ini menang
+cekMenang:- 
+    killBoss(X), 
+    X==1. */
+/* ini kalah
+cekMenang:- 
+    gameOn(X), X==0. */
 /* Game Looping */
 game_cond :-
     gameOn(1),
@@ -115,7 +121,7 @@ game_cond :-
         write('> '),
         read(Command),
         run(Command),
-        (cekMenang), !, write('selamat!') ,halt.
+        (killBoss(1) ; gameOn(0)), !, write('selamat!') ,halt.
         /* perulangan game*/
 
 
@@ -157,7 +163,6 @@ isMember(X, [Y|Xs]) :-
 
 /* STATUS */
 status :- 
-    gameOn(1),
     attack(Att,BonusAtt),
     defense(Def,BonusDef),
     inventory(Inv),
@@ -253,9 +258,9 @@ character_level_up :-
     defense(Def,BonusDef),
     max_HP(MaxHP),
     health(Darah,BonusDarah),
-    UP_Att is Att + Yf*2,
-    UP_Def is Def + Yf*2,
-    UP_MaxHP is MaxHP + Yf*10,
+    UP_Att is Att + Yf*10,
+    UP_Def is Def + Yf*10,
+    UP_MaxHP is MaxHP + Yf*50,
     UP_Darah is UP_MaxHP,
     /* UPDATE STATUS */
     retract(attack(_,_)),
@@ -267,16 +272,17 @@ character_level_up :-
     asserta(max_HP(UP_MaxHP)),
     asserta(health(UP_Darah,BonusDarah)),
     /* Menampilkan Level UP */
-    write('Level UP dude!!'),nl,
+    write('<---------------- Yeyyy, level UP dude!! ---------------->'),nl,
     DisplayAtt is Att+BonusAtt,
     DisplayDef is Def+BonusDef,
     DisplayHP is Darah+BonusDarah,
     DisplayNewAtt is UP_Att+BonusAtt,
     DisplayNewDef is UP_Def+BonusDef,
     DisplayNewHP is UP_Darah+BonusDarah,
-    write('Health       = '), write(DisplayHP), write('->'), write(DisplayNewHP),nl,
-    write('Attack       = '), write(DisplayAtt), write('->'), write(DisplayNewAtt),nl,
-    write('Defense      = '), write(DisplayDef), write('->'), write(DisplayNewDef),nl.
+    write('Health       = '), write(DisplayHP), write(' -> '), write(DisplayNewHP),nl,
+    write('Attack       = '), write(DisplayAtt), write(' -> '), write(DisplayNewAtt),nl,
+    write('Defense      = '), write(DisplayDef), write(' -> '), write(DisplayNewDef),nl,
+    write('<------------------------------------------------------->'),nl.
 
 character_level_up :-
     /* PANGGIL VARIABEL CHARACTER */
@@ -457,6 +463,7 @@ using_weapon(X) :-
     Jobs == JobsW,
     retract(weapon(_)),
     asserta(weapon(X)),
+    write('Anda menggunakan senjata '), write(X), nl,
     character_bonus_stat_update.
     
 
@@ -579,6 +586,7 @@ quest_check :-
     Current_Kill_Wolf_New is Current_Kill_Wolf - Current_Quest_Kill_Wolf,
     Current_Kill_Sauron_New is Current_Kill_Sauron - Current_Quest_Kill_Sauron,
 
+    write('You have completed the quest! Lets continue our journey! '),nl,
     retract(kill_count(_, _, _, _)),
     asserta(kill_count(Current_Kill_Slime_New, Current_Kill_Goblin_New, Current_Kill_Wolf_New, Current_Kill_Sauron_New)),
     
@@ -777,18 +785,20 @@ shop :-
     write('Tidak ada tempat store disekitarmu!').
 
 /* Enemy info */
+/*
 enemy_info(Level) :-
     enemy_type(Level,Nama,Att,Def,Health),
     write('Kind     = '), write(Nama),nl,
     write('Attack   = '), write(Att),nl,
     write('Defense  = '), write(Def),nl,
     write('Health   = '), write(Health),nl.
+*/
 
 /* Ajak berantem musuh */
 info_enemy :-
     is_enemy_near(Lv_Enemy,_,_),
-    write('Ohh no, musuh menghampirimu!'),nl,!,
-    enemy_info(Lv_Enemy), 
+    enemy_type(Lv_Enemy,Nama_Enemy,_,_,_),
+    write('Ohh no, '),write(Nama_Enemy),write(' musuh menghampirimu!!!'),nl,!, 
     serang.
 
 info_enemy :-
@@ -808,13 +818,12 @@ serang :-
     asserta(turn(0)),
     serang_musuh.
     
-
-
 serang_musuh :-
+    gameOn(1),
     info_current_battle,
     write('Do something!    (serang/serangan_maut/buka_inventory/lari)'),nl,
     write('> '),
-    read(X),
+    read(X), !,
     serang_action(X),
    /* X \= lari, */
     turn(N),
@@ -826,8 +835,9 @@ serang_musuh :-
 /* enemy_type(lv,kind,attack,defense,health)*/
 
 info_current_battle :-
-    current_enemy(Hp_Enemy,Lv,_,_),
-    enemy_type(Lv,Kind,Enemy_Att,Enemy_Def,_),
+    current_enemy(HP_Enemy,Lv_Enemy,_,_),
+    enemy_type(Lv_Enemy,Enemy_Kind,Enemy_Att,Enemy_Def,_),
+    char(Jobs,_,_),
     attack(Att,BonusAtt),
     defense(Def,BonusDef),
     health(HP,BonusHP),
@@ -835,19 +845,21 @@ info_current_battle :-
     DisplayDef is Def+BonusDef,
     DisplayHP is HP+BonusHP,
     write('<------------------ BATTLE INFO ------------------> '),nl,
-    write(' Player HP  : '), write(DisplayHP), nl,
-    write(' Player Att : '), write(DisplayAtt), nl,
-    write(' Player Def : '), write(DisplayDef), nl,
-    write(' --------------------------'),nl,
-    write(' Enemy HP   : '), write(HP_Enemy), nl,
-    write(' Enemy Att  : '), write(Enemy_Att), nl,
-    write(' Enemy Def  : '), write(Enemy_Def), nl,
-    write(' --------------------------'),nl.
+    write(' Player Jobs : '), write(Jobs), nl,
+    write(' Player HP   : '), write(DisplayHP), nl,
+    write(' Player Att  : '), write(DisplayAtt), nl,
+    write(' Player Def  : '), write(DisplayDef), nl,
+    write(' -------------------------------------------------'),nl,
+    write(' Enemy Type  : '), write(Enemy_Kind), nl,
+    write(' Enemy HP    : '), write(HP_Enemy), nl,
+    write(' Enemy Att   : '), write(Enemy_Att), nl,
+    write(' Enemy Def   : '), write(Enemy_Def), nl,
+    write('<------------------------------------------------->'),nl.
 
 /* Action yang bisa dilakukan ketika ketemu musuh */
 serang_action(X):-
     X == serang, !,
-    /* Kasih tulisan berapa damage yang dikasih ke enemy, tampilkan lagi enemy_info */
+    /* Kasih tulisan berapa damage yang dikasih ke enemy */
     attack(Att_Player,Bonus_Att_Player),
     current_enemy(Hp_Enemy,Lv,_,_),
     enemy_type(Lv,Kind,_,Enemy_Def,_),
@@ -862,18 +874,17 @@ serang_action(X) :-
     turn(N),
     N >= 3, !,
     /* sama kayak X == serang, cuma beda damage doang, setelah 3 kali serangan normal */
-    retract(turn(_)),
-    asserta(turn(0)),
     attack(Att_Player,Bonus_Att_Player),
     current_enemy(Hp_Enemy,Lv,_,_),
     enemy_type(Lv,Kind,_,Enemy_Def,_),
     New_Att_Player is 2*Att_Player,
     /* Deal Damage */
     damage_calculator(New_Att_Player,Bonus_Att_Player,Enemy_Def,0, Damage),
-    /* Kasih tulisan berapa damage yang dikasih ke enemy, tampilkan lagi enemy_info */
-    Damage is Attack_Player*2 - Def_Enemy,
+    /* Kasih tulisan berapa damage yang dikasih ke enemy */
     write('You deal '),write(Damage),write(' damage'),nl,
     New_Hp_Enemy is Hp_Enemy - Damage,
+    retract(turn(_)),
+    asserta(turn(0)),
     enemy_status(New_Hp_Enemy).
 
 serang_action(X) :-
@@ -882,33 +893,6 @@ serang_action(X) :-
     N < 3, !,
     write('Serangan maut gagal!'),nl.
 
-enemy_status(HP) :-
-    HP > 0, !,
-    update_darah_musuh(HP).
-    
-enemy_status(HP) :-
-    HP =< 0, !,
-    /* Nambah EXP dan uang */
-    char(Jobs,Lv,Xp),
-    current_enemy(_,Lv_Enemy,X,Y),
-    NXp is Xp+Lv_Enemy*5,
-    retract(char(_,_,_)),
-    asserta(char(Jobs,Lv,NXp)),
-    character_level_up,
-    
-    money(Uang),
-    Nuang is Uang + Lv_Enemy*100,
-    retract(money(_)),
-    asserta(money(Nuang)),
-    
-    /* Hapus enemy di posisi itu, retract enemy_pos, dan retract turn */
-    retract(current_enemy(_,_,_,_)),
-    retract(enemy_pos(X,Y,Lv_Enemy)),
-    retract(turn(_)),
-    write('Musuh berhasil terkalahkan!'),nl,
-    fail,!.
-    
-    
 serang_action(X):-
     X == lari, !,
     lariyee.
@@ -920,6 +904,63 @@ serang_action(X):-
     /* [fresh_care, bla, bla, bla]  */
     read(X),
     serang_action_inventory(X).
+
+enemy_status(HP) :-
+    HP > 0, !,
+    update_darah_musuh(HP).
+    
+enemy_status(HP) :-
+    HP =< 0, !,
+    /* Nambah EXP dan uang */
+    char(Jobs,Lv,Xp),
+    current_enemy(_,Lv_Enemy,X,Y),
+
+    tambah_kill_count(Lv_Enemy),
+
+    NXp is Xp+Lv_Enemy*5,
+    retract(char(_,_,_)),
+    asserta(char(Jobs,Lv,NXp)),
+
+    write('Hore!! Musuh berhasil terkalahkan!'),nl,
+    character_level_up,
+    
+    money(Uang),
+    Nuang is Uang + Lv_Enemy*100,
+    retract(money(_)),
+    asserta(money(Nuang)),
+    
+    /* Hapus enemy di posisi itu, retract enemy_pos, dan retract turn */
+    retract(current_enemy(_,_,_,_)),
+    retract(enemy_pos(X,Y,Lv_Enemy)),
+    retract(turn(_)),
+    fail,!.
+    
+tambah_kill_count(Lv_Enemy):-
+    kill_count(Slime,Goblin,Wolf),
+    Lv_Enemy == 1,
+    new_Kill is slime+1,
+    retract(kill_count(_,_,_)),
+    asserta(kill_count(new_Kill,goblin,wolf)),!.
+    
+tambah_kill_count(Lv_Enemy):-
+    kill_count(Slime,Goblin,Wolf),
+    Lv_Enemy == 2,
+    New_Kill is Goblin+1,
+    retract(kill_count(_,_,_)),
+    asserta(kill_count(Slime,New_Kill,Wolf)),!.
+
+tambah_kill_count(Lv_Enemy):-
+    kill_count(Slime,Goblin,Wolf),
+    Lv_Enemy == 3,
+    New_Kill is wolf+1,
+    retract(kill_count(_,_,_)),
+    asserta(kill_count(Slime,Goblin,New_Kill)),!.
+
+tambah_kill_count(Lv_Enemy):-
+    kill_Boss_Status(X),
+    Lv_Enemy == 4,
+    retract(kill_Boss_Status(_)),
+    asserta(kill_Boss_Status(1)),!.
 
 serang_action_inventory(X):-
     using_potion(X),
@@ -948,7 +989,22 @@ serang_player:-
     Result is BonusDarah - Damage, 
     health_damage(Result,Damage),
     write('Enemy deal '),write(Damage),write(' damage'),nl,
+    health(HP,_),
+    player_status(HP),
     serang_musuh.
+
+player_status(HP) :-
+    HP > 0, !.
+
+player_status(HP) :-
+    HP =< 0, !,
+    write(' </3  MODAR KOE!!  </3 '),nl,
+    write('<---- GAME OVER ----->'),nl,
+    retract(gameOn(_)),
+    asserta(gameOn(0)),!.
+
+
+
 
 health_damage(Result,Damage):-
     health(Darah,BonusDarah),
@@ -989,7 +1045,7 @@ store :-
     write(' ____) |  | | | |__| | | |  | |____'),nl,
     write('|_____/   |_|   ____/|_| | _|______|'),nl,
     write('_________________________ ____________'),nl,
-
+    money(Uang),
     write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
     write('%    Choose what you want to buy    %'),nl,
     write('%                                   %'),nl,
@@ -1000,10 +1056,11 @@ store :-
     write('%  5. Accesories (20 Money)         %'),nl,
     write('%  6. Potion (20 Money/5 potion)    %'),nl,
     write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
+    write('Your money :'),write(Uang),nl,
     write('> '),
     read(X),
     store_item_handling(X),
-    money(Uang),
+
     New_Uang is Uang - 20,
     retract(money(_)),
     asserta(money(New_Uang)).
@@ -1176,30 +1233,23 @@ add_item_potion(Y) :-
 /* Display New Game*/
 start :-
     /*Insialisasi program*/
-    write('________________________________________________________________'),nl,
-    write('/ ____|               | |   (_)        / ____|    | |       (_)'),nl, 
-    write('| |  __  ___ _ __  ___| |__  _ _ __   | (___   ___| | _________'),nl,
-    write('| | |_ |/ _    _  / __|  _  | |  _      ___   / _   |/ / _` | |'),nl,
-    write('| |__| |  __/ | |  __   | | | | | | |  ____) |  __/   < (_| | |'),nl,
-    write(' ______| ___|_| |_|___/_| |_|_|_| |_| |_____/  ___|_| _ __,_|_|'),nl,
-    write('_______________________________________________________________'),nl,
-
-    write(''),nl,
+    write('WELCOME !!'),nl,
     write('Lets play and be a progammer'),nl,
     write(''),nl,
     
     write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
     write('%                        ~Genshin Sekai~                         %'),nl,
     write('%                                                                %'),nl,
-    write('%  1. start  : untuk memulai petualanganmu                       %'),nl,
-    write('%  2. map    : menampilkan peta                                  %'),nl,
-    write('%  3. status : menampilkan kondisimu terkini                     %'),nl,
-    write('%  4. w      : gerak ke utara 1 langkah                          %'),nl,
-    write('%  5. s      : gerak ke selatan 1 langkah                        %'),nl,
-    write('%  6. d      : gerak ke ke timur 1 langkah                       %'),nl,
-    write('%  7. a      : gerak ke barat 1 langkah                          %'),nl,
-    write('%  9. Status : menampilkan status pemain                         %'),nl,
-    write('%  8. help   : menampilkan segala bantuan                        %'),nl,
+    write('%                  "HIDUP KEMBALI DI DUNIA WIBU"                 %'),nl,
+    write('%                                                                %'),nl,
+    write('%  CREDIT :                                                      %'),nl,
+    write('%        1. Muhammad Azhar Faturahman (13519020)                 %'),nl,
+    write('%        2. Daru Bagus Dananjaya      (13519080)                 %'),nl,
+    write('%        3.                           %'),nl,
+    write('%        4. Rayhan Asadel (13519196)                             %'),nl,
+    write('%        5. Muhammad Dehan Al Kautsar (13519200)                 %'),nl,
+    write('%                                                                %'),nl,
+    write('%                                                                %'),nl,
     write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
     /*restart,*/
     asserta(player_pos(1,1)),
@@ -1208,12 +1258,13 @@ start :-
     quest_init,
     asserta(killBoss(0)),
     asserta(gameOn(1)),
+    help,
     game_cond.
     
         
 
     
-restart:-  
+/*restart:-  
     retract(gameOn(_)),
     retract(killBoss(_)),
     retract(char(_,_,_)),
@@ -1231,7 +1282,7 @@ restart:-
     retract(quest(_,_,_)),
     retract(kill_count(_,_,_)),
     asserta(gameOn(0)),
-    asserta(killBoss(0)).
+    asserta(killBoss(0)).*/
 
 /* Tampilan Help */
 help :- write('_________________________________________________________________________________________'),nl,
@@ -1247,15 +1298,17 @@ help :- write('_________________________________________________________________
         write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
         write('%                        ~Genshin Sekai~                         %'),nl,
         write('%                                                                %'),nl,
-        write('%  1. start  : untuk memulai petualanganmu                       %'),nl,
-        write('%  2. map    : menampilkan peta                                  %'),nl,
-        write('%  3. status : menampilkan kondisimu terkini                     %'),nl,
-        write('%  4. w      : gerak ke utara 1 langkah                          %'),nl,
-        write('%  5. s      : gerak ke selatan 1 langkah                        %'),nl,
-        write('%  6. d      : gerak ke ke timur 1 langkah                       %'),nl,
-        write('%  7. a      : gerak ke barat 1 langkah                          %'),nl,
-        write('%  9. Status : menampilkan status pemain                         %'),nl,
-        write('%  8. help   : menampilkan segala bantuan                        %'),nl,
+        write('%  1. map    : menampilkan peta                                  %'),nl,
+        write('%  2. status : menampilkan kondisimu terkini                     %'),nl,
+        write('%  3. w      : gerak ke utara 1 langkah                          %'),nl,
+        write('%  4. s      : gerak ke selatan 1 langkah                        %'),nl,
+        write('%  5. d      : gerak ke ke timur 1 langkah                       %'),nl,
+        write('%  6. a      : gerak ke barat 1 langkah                          %'),nl,
+        write('%  7. help   : menampilkan segala bantuan                        %'),nl,
+        write('%  8. attack : menyerang musuh                                   %'),nl,
+        write('%  9. store  : masuk ke dalam toko                               %'),nl,
+        write('% 10. quest  : mengecek current quest                            %'),nl,
+        write('% 11. quit   : cabut                                             %'),nl,
         write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl,
         write(''),nl,
         write('Legends:'),nl,
