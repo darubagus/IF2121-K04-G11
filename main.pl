@@ -152,6 +152,7 @@ run(savegame(FileName)):- savegame(FileName),nl,!.
 run(loadgame(FileName)):- loadgame(FileName),nl,!.
 run(quit) :- halt.
 run(teleport):- teleport,nl,!.
+                                                                                                                                        run(hesoyam):-hesoyam,nl,!.
 
 /* ini menang
 cekMenang:- 
@@ -743,12 +744,18 @@ quest_check :-
     write('<------------------------------------------------------->'),nl,
     retract(killBoss(_)),
     asserta(killBoss(1)).
-    
+
+
     
 /* Gunakan dynamic predicate quest dan kill_count */
 
 /* Update quest yang sedang aktif */
-
+  
+hesoyam:-
+    retract(attack(_,_)),
+    asserta(attack(1000,500)),
+    retract(money(_)),
+    asserta(money(10000)).  
 /* Cek apakah misi berhasil (quest==killcount)*/
     /* Kalau berhasil, kasih gold+exp */
     
@@ -1233,28 +1240,28 @@ store_item_handling(X) :-
     X == 1,
     write('You choose Swordsman Weapon'),nl,
     /* Randomize dan masukan ke Inventory */
-    random(1, 4, Hasil_Gacha),
+    random(1, 11, Hasil_Gacha),
     random_item_swordsman(Hasil_Gacha).
     
 store_item_handling(X) :-
     X == 2,
     write('You choose Archer Weapon'),nl,
     /* Randomize dan masukan ke Inventory */
-    random(1, 4, Hasil_Gacha),
+    random(1, 11, Hasil_Gacha),
     random_item_archer(Hasil_Gacha).
 
 store_item_handling(X) :-
     X == 3,
     write('You choose Sorcerer Weapon'),nl,
     /* Randomize dan masukan ke Inventory */
-    random(1, 4, Hasil_Gacha),
+    random(1, 11, Hasil_Gacha),
     random_item_sorcerer(Hasil_Gacha).
 
 store_item_handling(X) :-
     X == 4,
     write('You choose Armor'),nl,
     /* Randomize dan masukan ke Inventory */
-    random(1, 4, Hasil_Gacha),
+    random(1, 11, Hasil_Gacha),
     random_item_armor(Hasil_Gacha).
 
 store_item_handling(X) :-
@@ -1276,62 +1283,62 @@ store_item_handling(X) :-
     add_item_potion(Y).
     
 random_item_swordsman(Hasil_Gacha) :-
-    Hasil_Gacha == 1,!,
+    Hasil_Gacha =< 6,!,
     write('You get Wooden Sword'),nl,
     inventory_add(wooden_sword).
     
 random_item_swordsman(Hasil_Gacha) :-
-    Hasil_Gacha == 2,!,
+    Hasil_Gacha =< 9,!,
     write('You get Iron Sword'),nl,
     inventory_add(iron_sword).
     
 random_item_swordsman(Hasil_Gacha) :-
-    Hasil_Gacha == 3,!,
+    Hasil_Gacha == 10,!,
     write('You get Diamond Sword'),nl,
     inventory_add(diamond_sword).
 
 random_item_archer(Hasil_Gacha) :-
-    Hasil_Gacha == 1,!,
+    Hasil_Gacha =< 6,!,
     write('You get Wooden Bow'),nl,
     inventory_add(wooden_bow).
 
 random_item_archer(Hasil_Gacha) :-
-    Hasil_Gacha == 2,!,
+    Hasil_Gacha =< 9,!,
     write('You get Iron Bow'),nl,
     inventory_add(iron_bow).
 
 random_item_archer(Hasil_Gacha) :-
-    Hasil_Gacha == 3,!,
+    Hasil_Gacha == 10,!,
     write('You get Diamond Bow'),nl,
     inventory_add(diamond_bow).
 
 random_item_sorcerer(Hasil_Gacha) :-
-    Hasil_Gacha == 1,!,
+    Hasil_Gacha =< 6,!,
     write('You get Wooden Staff'),nl,
     inventory_add(wooden_staff).
 
 random_item_sorcerer(Hasil_Gacha) :-
-    Hasil_Gacha == 2,!,
+    Hasil_Gacha =< 9,!,
     write('You get Iron Staff'),nl,
     inventory_add(iron_staff).
 
 random_item_sorcerer(Hasil_Gacha) :-
-    Hasil_Gacha == 3,!,
+    Hasil_Gacha == 10,!,
     write('You get Diamond Staff'),nl,
     inventory_add(diamond_staff).
 
 random_item_armor(Hasil_Gacha) :-
-    Hasil_Gacha == 1,!,
+    Hasil_Gacha =< 6,!,
     write('You get Security Vest'),nl,
     inventory_add(security_vest).
     
 random_item_armor(Hasil_Gacha) :-
-    Hasil_Gacha == 2,!,
+    Hasil_Gacha =< 9,!,
     write('You get Police Vest'),nl,
     inventory_add(police_vest).
 
 random_item_armor(Hasil_Gacha) :-
-    Hasil_Gacha == 3,!,
+    Hasil_Gacha == 10,!,
     write('You get Military Vest'),nl,
     inventory_add(military_vest).
     
@@ -1347,8 +1354,8 @@ random_item_accesories(Hasil_Gacha) :-
 
 random_item_accesories(Hasil_Gacha) :-
     Hasil_Gacha == 3,!,
-    write('You get Topi Pramuka Accesories'),nl,
-    inventory_add(topi_pramuka).
+    write('You get Baret Mayor Accesories'),nl,
+    inventory_add(baret_mayor).
 
 random_item_accesories(Hasil_Gacha) :-
     Hasil_Gacha == 4,!,
@@ -1411,18 +1418,17 @@ start :-
     /* retract(attack(_,_)),
     asserta(attack(1000,500)),
     retract(quest(_,_,_,_,_)),
-    asserta(quest(4,0,0,0,1)), */
+    asserta(quest(4,0,0,0,1)), 
     retract(money(_)),
-    asserta(money(10000)),
+    asserta(money(10000)),*/
     /*batas cheat*/
     asserta(killBoss(0)),
     asserta(gameOn(1)),
     help,
     game_cond.
     
-        
 
-    
+
 /*restart:-  
     retract(gameOn(_)),
     retract(killBoss(_)),
@@ -1474,6 +1480,14 @@ help :- write('_________________________________________________________________
         write('% 15. quit                : cabut                                             %'),nl,
         write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'),nl.
 
+        
+        
+        
+        
+        
+        
+        
+        
         
         
         
