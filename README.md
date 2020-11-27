@@ -18,7 +18,7 @@ Program ini dibuat untuk memenuhi tugas Mata Kuliah **IF 2121 Logika Komputasion
 
 
 **LINK LAPORAN** <br />
-*bit.ly/bukanLaporanLogKom*
+*https://bit.ly/bukanLaporanLogKom*
 
 ### Build With
 
